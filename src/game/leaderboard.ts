@@ -50,8 +50,16 @@ export function setPlayerName(name: string): string | null {
   return trimmed
 }
 
+function leaderboardUrl(path = '/api/leaderboard'): string {
+  if (typeof window === 'undefined') return path
+  return new URL(path, window.location.origin).toString()
+}
+
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
-  const res = await fetch('/api/leaderboard')
+  const res = await fetch(leaderboardUrl(), {
+    cache: 'no-store',
+    headers: { Accept: 'application/json' },
+  })
   if (!res.ok) throw new Error(`leaderboard_get_${res.status}`)
   const data = (await res.json()) as { rows?: LeaderboardRow[] }
   return Array.isArray(data.rows) ? data.rows : []
@@ -63,9 +71,13 @@ export async function submitLeaderboardScore(input: {
   name?: string
 }): Promise<LeaderboardRow[]> {
   const name = input.name ?? getPlayerName()
-  const res = await fetch('/api/leaderboard', {
+  const res = await fetch(leaderboardUrl(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
       playerId: getPlayerId(),
       name,

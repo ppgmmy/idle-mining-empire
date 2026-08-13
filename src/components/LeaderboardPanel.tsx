@@ -87,7 +87,12 @@ export function LeaderboardPanel({ evolution, rebirth }: Props) {
 
       {status === 'loading' ? <p className="hint">載入緊…</p> : null}
       {status === 'error' ? (
-        <p className="hint">連唔到排行榜，請稍後再試或撳重新整理。</p>
+        <p className="hint">
+          {typeof window !== 'undefined' &&
+          /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
+            ? '而家開緊本機網址；本機 API 未開就會連唔到。手機請改開正式站 https://idle-mining-empire-omega.vercel.app'
+            : '連唔到排行榜，請稍後再試或撳重新整理。'}
+        </p>
       ) : null}
 
       {status === 'ready' && rows.length === 0 ? (
