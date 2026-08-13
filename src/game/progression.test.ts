@@ -108,15 +108,15 @@ describe('progression', () => {
     expect(state.crystals.gt(0)).toBe(true)
   })
 
-  it('research can level infinitely with geometric cost', () => {
+  it('research spends crystals with geometric cost growth', () => {
     let state = createInitialState()
-    state = { ...state, ore: bn(1e12) }
+    state = { ...state, crystals: bn(1e6) }
     state = buyResearch(state, 'pulse-click')
     expect(state.researchLevels['pulse-click']).toBe(1)
-    const afterFirst = state.ore
+    const afterFirst = state.crystals
     state = buyResearch(state, 'pulse-click')
     expect(state.researchLevels['pulse-click']).toBe(2)
-    expect(state.ore.lt(afterFirst)).toBe(true)
+    expect(state.crystals.lt(afterFirst)).toBe(true)
 
     state = buyResearch(state, 'macro-kernel')
     expect(state.macrosUnlocked).toBe(true)

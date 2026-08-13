@@ -238,8 +238,8 @@ export function buyResearch(state: GameState, id: string): GameState {
   const node = RESEARCH_TREE.find((n) => n.id === id)
   if (!node) return state
   const level = state.researchLevels[id] ?? 0
-  const oreCost = researchUpgradeCost(node, level)
-  const paid = spendOre(state, oreCost)
+  const crystalCost = researchUpgradeCost(node, level)
+  const paid = spendCrystals(state, crystalCost)
   if (!paid) return state
 
   let next: GameState = {
@@ -264,10 +264,10 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
 
   const researchLevels = { ...state.researchLevels }
   for (const node of RESEARCH_TREE) {
-    researchLevels[node.id] = Math.max(
-      researchLevels[node.id] ?? 0,
-      ADMIN_RESEARCH_FLOOR,
-    )
+    // 純解鎖節點（如巨集核心）升到 1 即可
+    const floor =
+      Object.keys(node.effectPerLevel).length === 0 ? 1 : ADMIN_RESEARCH_FLOOR
+    researchLevels[node.id] = Math.max(researchLevels[node.id] ?? 0, floor)
   }
 
   let next: GameState = {
@@ -311,7 +311,7 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
   return { ...next, gear, equipped }
 }
 
-/** 打造裝備：晶體代價，隨庫存件數上升 */
+/** 打造裝備：星塵代價，隨庫存件數上升 */
 export function craftGearCost(state: GameState) {
   return bn(2).mul(bn(1.3).pow(state.gear.length))
 }
@@ -319,7 +319,7 @@ export function craftGearCost(state: GameState) {
 export function craftGear(state: GameState, slot: 'pick' | 'suit' | 'core'): GameState {
   if (!canCraftGear(state)) return state
   const cost = craftGearCost(state)
-  const paid = spendCrystals(state, cost)
+  const paid = spendStardust(state, cost)
   if (!paid) return state
   const item = rollGear(slot, paid.craftLevel)
   const withItem: GameState = {
@@ -353,12 +353,12 @@ export function dropGear(state: GameState, gearId: string): GameState {
   }
 }
 
-/** 晉升：升 1 稀有度並將舊詞條互乘本階升幅；滿階則整條重累乘（星塵） */
+/** 晉升／重鑄：升 1 稀有度並將舊詞條互乘本階升幅；滿階則整條重累乘（晶體） */
 export function rerollGear(state: GameState, gearId: string): GameState {
   const item = state.gear.find((g) => g.id === gearId)
   if (!item) return state
   const cost = rerollGearCost(item)
-  const paid = spendStardust(state, cost)
+  const paid = spendCrystals(state, cost)
   if (!paid) return state
   const willUpgrade = canUpgradeRarity(item.rarity)
   const rarity = nextRarity(item.rarity)
@@ -405,7 +405,7 @@ export function doRebirth(state: GameState): GameState {
       nextCount >= 2 ? Math.max(state.automationLines, 1) : state.automationLines,
     macrosUnlocked: nextCount >= 3 || state.macrosUnlocked,
     totalOreEarned: bn(0),
-    activeChallengeId: null,
+    // 已接嘅限制挑戰轉生後繼續，唔取消
     activeBoss: null,
     bossSpawnLockUntil: 0,
     stage: 1,

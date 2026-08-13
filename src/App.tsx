@@ -463,7 +463,7 @@ export default function App() {
           <section className="panel research-panel">
             <h2>研究流派</h2>
             <p className="lede">
-              四線無限升級 · 每級加幅×1.05 · 與升級／裝備互乘疊加
+              耗晶體升級 · 每級代價再乘成長 · 每級加幅×1.05 · 與升級／裝備互乘
             </p>
 
             <div className="branch-tabs" role="tablist" aria-label="研究流派">
@@ -487,16 +487,16 @@ export default function App() {
               <div className="stack research-branch">
                 {RESEARCH_TREE.filter((n) => n.branch === researchBranch).map((node) => {
                   const level = researchLevel(state, node.id)
-                  const oreCost = researchUpgradeCost(node, level)
-                  const oreOk = state.ore.gte(oreCost)
+                  const crystalCost = researchUpgradeCost(node, level)
+                  const crystalOk = state.crystals.gte(crystalCost)
                   return (
                     <ActionCard
                       key={node.id}
                       compact
                       title={`${node.name} · ${level}`}
                       desc={`${node.desc} · ${formatResearchEffects(node, level)}`}
-                      cost={`${formatBN(oreCost)} 礦石`}
-                      disabled={!oreOk}
+                      cost={`${formatBN(crystalCost)} 晶體`}
+                      disabled={!crystalOk}
                       onClick={() => game.buyResearch(node.id)}
                     />
                   )
@@ -535,7 +535,7 @@ export default function App() {
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
-              打造耗晶體 · 晉升互乘本階升幅（起 1.05% · 每階×120%）· 全庫互乘 · 與升級／研究互乘 ·{' '}
+              打造耗星塵 · 晉升／重鑄耗晶體 · 晉升互乘本階升幅（起 1.05% · 每階×120%）· 全庫互乘 · 與升級／研究互乘 ·{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
             <p className="craft-level-line">
@@ -546,7 +546,7 @@ export default function App() {
             <div className="row-actions">
               {(['pick', 'suit', 'core'] as const).map((slot) => {
                 const cost = craftGearCost(state)
-                const canAfford = state.crystals.gte(cost)
+                const canAfford = state.stardust.gte(cost)
                 const canCraft = canCraftGear(state)
                 return (
                   <button
@@ -560,7 +560,7 @@ export default function App() {
                     {SLOT_META[slot].label}
                     <span className="craft-role">{SLOT_META[slot].role}</span>
                     <span className="craft-cost">
-                      {canCraft ? `${formatBN(cost)} 晶體` : '已滿'}
+                      {canCraft ? `${formatBN(cost)} 星塵` : '已滿'}
                     </span>
                   </button>
                 )
@@ -673,7 +673,7 @@ export default function App() {
                     })
                     .map((item) => {
                       const cost = rerollGearCost(item)
-                      const canAfford = state.stardust.gte(cost)
+                      const canAfford = state.crystals.gte(cost)
                       const upgrading = canUpgradeRarity(item.rarity)
                       const meta = SLOT_META[item.slot]
                       const rerolls = item.rerolls ?? 0
@@ -705,12 +705,17 @@ export default function App() {
                                 disabled={!canAfford}
                                 onClick={() => game.rerollGear(item.id)}
                               >
-                                {upgrading ? '晉升' : '重鑄'} · {formatBN(cost)} 星塵
+                                {upgrading ? '晉升' : '重鑄'} · {formatBN(cost)} 晶體
                               </button>
                               <button
                                 type="button"
                                 className="ghost-btn"
-                                onClick={() => game.dropGear(item.id)}
+                                onClick={() => {
+                                  const ok = window.confirm(
+                                    `確定丟棄「${item.name}」（${RARITY_LABEL[item.rarity]}）？\n丟咗就冇得返。`,
+                                  )
+                                  if (ok) game.dropGear(item.id)
+                                }}
                               >
                                 丟
                               </button>
@@ -802,7 +807,12 @@ export default function App() {
               }
               cost={canEvolve(state) ? '進化' : `${EVOLUTION_UNLOCK_REBIRTH}轉後`}
               disabled={!canEvolve(state)}
-              onClick={game.evolve}
+              onClick={() => {
+                const ok = window.confirm(
+                  `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度（轉生歸零），只保留晶體／星塵。`,
+                )
+                if (ok) game.evolve()
+              }}
             />
             <div className="stack muted-block">
               <h3>限制挑戰</h3>

@@ -14,151 +14,128 @@ import type {
 } from './types'
 import { AFFIX_META, RARITY_ORDER, SLOT_META } from './types'
 
+/**
+ * 每個流派：點擊／閒置／離線各最多一項（唔重複）。
+ * 開採力同時乘點擊+閒置，研究唔再用。
+ */
 export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'pulse-click',
     name: '脈衝點擊',
-    desc: '主動流派：只加點擊倍率',
+    desc: '主動流派：點擊倍率',
     branch: 'active',
-    baseCost: 8_000,
-    costGrowth: 1.85,
-    effectPerLevel: { clickMult: 0.04 },
+    baseCost: 3,
+    costGrowth: 1.65,
+    effectPerLevel: { clickMult: 0.05 },
   },
   {
     id: 'impact-burst',
     name: '衝擊爆發',
-    desc: '主動流派：只加開採力',
+    desc: '主動流派：閒置產量',
     branch: 'active',
-    baseCost: 14_000,
-    costGrowth: 1.9,
-    effectPerLevel: { minePower: 0.03 },
+    baseCost: 5,
+    costGrowth: 1.68,
+    effectPerLevel: { idleRate: 0.03 },
   },
   {
     id: 'frenzy-tap',
     name: '狂熱連點',
-    desc: '主動流派：只加點擊倍率',
+    desc: '主動流派：離線收益',
     branch: 'active',
-    baseCost: 22_000,
-    costGrowth: 1.95,
-    effectPerLevel: { clickMult: 0.05 },
-  },
-  {
-    id: 'overclock-strike',
-    name: '超頻一擊',
-    desc: '主動流派：只加開採力',
-    branch: 'active',
-    baseCost: 35_000,
-    costGrowth: 2.05,
-    effectPerLevel: { minePower: 0.035 },
+    baseCost: 8,
+    costGrowth: 1.72,
+    effectPerLevel: { offlineBonus: 0.028 },
   },
   {
     id: 'deep-veins',
     name: '深層礦脈',
-    desc: '閒置流派：只加離線收益',
+    desc: '閒置流派：離線收益',
     branch: 'idle',
-    baseCost: 10_000,
-    costGrowth: 1.85,
-    effectPerLevel: { offlineBonus: 0.03 },
+    baseCost: 4,
+    costGrowth: 1.65,
+    effectPerLevel: { offlineBonus: 0.035 },
   },
   {
     id: 'auto-drill',
     name: '自動鑽頭',
-    desc: '閒置流派：只加閒置產量',
+    desc: '閒置流派：閒置產量',
     branch: 'idle',
-    baseCost: 16_000,
-    costGrowth: 1.9,
-    effectPerLevel: { idleRate: 0.035 },
+    baseCost: 6,
+    costGrowth: 1.7,
+    effectPerLevel: { idleRate: 0.04 },
   },
   {
     id: 'drone-swarm',
     name: '無人機群',
-    desc: '閒置流派：只加閒置產量',
+    desc: '閒置流派：點擊倍率',
     branch: 'idle',
-    baseCost: 28_000,
-    costGrowth: 1.95,
-    effectPerLevel: { idleRate: 0.03 },
-  },
-  {
-    id: 'sleep-harvest',
-    name: '休眠收割',
-    desc: '閒置流派：只加離線收益',
-    branch: 'idle',
-    baseCost: 40_000,
-    costGrowth: 2.05,
-    effectPerLevel: { offlineBonus: 0.04 },
+    baseCost: 10,
+    costGrowth: 1.74,
+    effectPerLevel: { clickMult: 0.03 },
   },
   {
     id: 'macro-kernel',
     name: '巨集核心',
-    desc: '解鎖自動請礦工；只加開採力',
+    desc: '解鎖自動請礦工（無產量加成）',
     branch: 'automation',
-    baseCost: 25_000,
-    costGrowth: 1.95,
-    effectPerLevel: { minePower: 0.025 },
+    baseCost: 8,
+    costGrowth: 1.6,
+    effectPerLevel: {},
     unlocksMacros: true,
   },
   {
     id: 'logic-bus',
     name: '邏輯匯流排',
-    desc: '自動化流派：只加閒置產量',
+    desc: '自動化流派：閒置產量',
     branch: 'automation',
-    baseCost: 36_000,
-    costGrowth: 2.0,
-    effectPerLevel: { idleRate: 0.028 },
+    baseCost: 12,
+    costGrowth: 1.72,
+    effectPerLevel: { idleRate: 0.032 },
   },
   {
     id: 'relay-net',
     name: '中繼網絡',
-    desc: '自動化流派：只加離線收益',
+    desc: '自動化流派：離線收益',
     branch: 'automation',
-    baseCost: 48_000,
-    costGrowth: 2.08,
-    effectPerLevel: { offlineBonus: 0.025 },
+    baseCost: 18,
+    costGrowth: 1.76,
+    effectPerLevel: { offlineBonus: 0.03 },
   },
   {
     id: 'script-forge',
     name: '腳本鍛造',
-    desc: '自動化流派：只加點擊倍率',
+    desc: '自動化流派：點擊倍率',
     branch: 'automation',
-    baseCost: 65_000,
-    costGrowth: 2.12,
+    baseCost: 25,
+    costGrowth: 1.8,
     effectPerLevel: { clickMult: 0.045 },
   },
   {
     id: 'ore-assay',
     name: '礦石化驗',
-    desc: '經濟流派：只加開採力',
+    desc: '經濟流派：點擊倍率',
     branch: 'economy',
-    baseCost: 12_000,
-    costGrowth: 1.9,
-    effectPerLevel: { minePower: 0.028 },
-  },
-  {
-    id: 'crystal-lens',
-    name: '晶體透鏡',
-    desc: '經濟流派：只加離線收益',
-    branch: 'economy',
-    baseCost: 26_000,
-    costGrowth: 1.98,
-    effectPerLevel: { offlineBonus: 0.025 },
+    baseCost: 5,
+    costGrowth: 1.68,
+    effectPerLevel: { clickMult: 0.035 },
   },
   {
     id: 'market-pulse',
     name: '市場脈動',
-    desc: '經濟流派：只加點擊倍率',
+    desc: '經濟流派：閒置產量',
     branch: 'economy',
-    baseCost: 42_000,
-    costGrowth: 2.05,
-    effectPerLevel: { clickMult: 0.025 },
+    baseCost: 15,
+    costGrowth: 1.75,
+    effectPerLevel: { idleRate: 0.028 },
   },
   {
     id: 'singularity-ledger',
     name: '奇點帳本',
-    desc: '經濟流派：只加開採力',
+    desc: '經濟流派：離線收益；另加裝備庫容',
     branch: 'economy',
-    baseCost: 80_000,
-    costGrowth: 2.2,
-    effectPerLevel: { minePower: 0.032 },
+    baseCost: 40,
+    costGrowth: 1.85,
+    effectPerLevel: { offlineBonus: 0.032 },
   },
 ]
 
@@ -496,7 +473,7 @@ export function rarityAccent(rarity: Rarity): string {
 }
 
 /**
- * 晉升／重鑄用星塵：階位愈高愈貴，再 × 1.25^已重鑄次數
+ * 晉升／重鑄用晶體：階位愈高愈貴，再 × 1.25^已重鑄次數
  */
 export function rerollGearCost(item: GearItem): BN {
   const i = rarityIndex(item.rarity)
@@ -838,7 +815,7 @@ export function researchLevel(state: GameState, id: string): number {
   return state.researchLevels[id] ?? 0
 }
 
-/** 升級到下一級嘅代價：baseCost × costGrowth^currentLevel */
+/** 晶體代價：baseCost × costGrowth^currentLevel（每級明顯加價） */
 export function researchUpgradeCost(node: ResearchNode, currentLevel: number): BN {
   return bn(node.baseCost).mul(bn(node.costGrowth).pow(currentLevel))
 }
@@ -858,17 +835,28 @@ export function formatResearchEffects(
   node: ResearchNode,
   level: number,
 ): string {
-  return RESEARCH_AFFIX_ORDER.filter((id) => (node.effectPerLevel[id] ?? 0) > 0)
-    .map((id) => {
-      const per = node.effectPerLevel[id] ?? 0
-      const short = AFFIX_META[id].short
-      if (level <= 0) {
-        return `${short}×${(1 + per).toFixed(3)}起/級(×${RESEARCH_LEVEL_GAIN_GROWTH})`
-      }
-      const mult = researchNodeMult(node, level, id)
-      return `${short}×${mult >= 1.1 ? mult.toFixed(2) : mult.toFixed(3)}`
-    })
-    .join(' · ')
+  const parts = RESEARCH_AFFIX_ORDER.filter(
+    (id) => (node.effectPerLevel[id] ?? 0) > 0,
+  ).map((id) => {
+    const per = node.effectPerLevel[id] ?? 0
+    const short = AFFIX_META[id].short
+    if (level <= 0) {
+      return `${short}×${(1 + per).toFixed(3)}起/級(×${RESEARCH_LEVEL_GAIN_GROWTH})`
+    }
+    const mult = researchNodeMult(node, level, id)
+    return `${short}×${mult >= 1.1 ? mult.toFixed(2) : mult.toFixed(3)}`
+  })
+  if (parts.length === 0) {
+    if (node.unlocksMacros) return level >= 1 ? '已解鎖自動化' : '解鎖自動化'
+    if (node.id === 'singularity-ledger') {
+      return level > 0 ? `庫容+${level * 2}` : '庫容+2/級'
+    }
+    return '無產量加成'
+  }
+  if (node.id === 'singularity-ledger') {
+    parts.push(level > 0 ? `庫容+${level * 2}` : '庫容+2/級')
+  }
+  return parts.join(' · ')
 }
 
 /** 第 levelIndex（0-based）級嘅加幅：per × GROWTH^levelIndex */

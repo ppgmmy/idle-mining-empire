@@ -38,7 +38,8 @@ export const AFFIX_META: Record<
 > = {
   clickMult: { short: '點擊', effect: '手動', label: '點擊倍率' },
   idleRate: { short: '閒置', effect: '掛機', label: '閒置產量' },
-  minePower: { short: '開採', effect: '共用', label: '開採力' },
+  /** 裝備／挑戰用：同時乘點擊同閒置；研究已唔再用 */
+  minePower: { short: '開採', effect: '點擊+閒置', label: '開採力' },
   offlineBonus: { short: '離線', effect: '結算', label: '離線加成' },
 }
 
@@ -158,9 +159,9 @@ export type ResearchNode = {
   name: string
   desc: string
   branch: ResearchBranch
-  /** 礦石底價；每級 × costGrowth */
+  /** 晶體底價；升到下一級代價 = baseCost × costGrowth^currentLevel */
   baseCost: number
-  /** 每級代價倍率（幾何級） */
+  /** 每級代價倍率（幾何級，愈升愈貴） */
   costGrowth: number
   effectPerLevel: Partial<Record<AffixId, number>>
   unlocksMacros?: boolean

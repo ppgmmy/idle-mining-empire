@@ -106,7 +106,7 @@ describe('side systems', () => {
       rerolls: 0,
     }
     let state = createInitialState()
-    state = { ...state, stardust: bn(1e6), gear: [item], equipped: { pick: item.id } }
+    state = { ...state, crystals: bn(1e6), gear: [item], equipped: { pick: item.id } }
 
     for (let i = 1; i < RARITY_ORDER.length; i++) {
       state = rerollGear(state, item.id)
@@ -149,7 +149,7 @@ describe('side systems', () => {
       rerolls: 0,
     }
     let state = createInitialState()
-    state = { ...state, stardust: bn(1e6), gear: [item], equipped: { pick: item.id } }
+    state = { ...state, crystals: bn(1e6), gear: [item], equipped: { pick: item.id } }
     state = rerollGear(state, item.id)
     expect(state.gear[0].rarity).toBe('rare')
     expect(state.gear[0].affixes[0].value).toBeGreaterThan(0.01)
@@ -174,12 +174,26 @@ describe('side systems', () => {
     expect(sumAffix(state, 'clickMult')).toBeCloseTo(0.875)
   })
 
-  it('each research node only buffs one affix type', () => {
+  it('research nodes avoid minePower and duplicate types within a branch', () => {
+    const affixIds = [
+      'clickMult',
+      'idleRate',
+      'minePower',
+      'offlineBonus',
+    ] as const
     for (const node of RESEARCH_TREE) {
-      const keys = (
-        ['clickMult', 'idleRate', 'minePower', 'offlineBonus'] as const
-      ).filter((id) => (node.effectPerLevel[id] ?? 0) > 0)
-      expect(keys).toHaveLength(1)
+      const keys = affixIds.filter((id) => (node.effectPerLevel[id] ?? 0) > 0)
+      expect(keys).not.toContain('minePower')
+      expect(keys.length).toBeLessThanOrEqual(1)
+    }
+    for (const branch of ['active', 'idle', 'automation', 'economy'] as const) {
+      const types: string[] = []
+      for (const node of RESEARCH_TREE.filter((n) => n.branch === branch)) {
+        for (const id of affixIds) {
+          if ((node.effectPerLevel[id] ?? 0) > 0) types.push(id)
+        }
+      }
+      expect(new Set(types).size).toBe(types.length)
     }
   })
 
@@ -244,7 +258,7 @@ describe('side systems', () => {
     let state = createInitialState()
     state = {
       ...state,
-      crystals: bn(100),
+      stardust: bn(100),
       rebirthCount: 20,
       craftLevel: 1,
       craftXp: 0,
