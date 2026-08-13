@@ -319,7 +319,7 @@ export function doRebirth(state: GameState): GameState {
     ...state,
     ore: bn(15),
     clickPower: bn(1),
-    miners: 0,
+    miners: 1,
     minerCost: bn(15),
     drillLevel: 0,
     drillCost: bn(40),
@@ -383,8 +383,6 @@ export function startChallenge(state: GameState, id: string): GameState {
   return {
     ...state,
     activeChallengeId: id,
-    ore: bn(0),
-    miners: Math.min(state.miners, 3),
   }
 }
 

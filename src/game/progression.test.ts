@@ -94,6 +94,7 @@ describe('progression', () => {
     expect(canRebirth(state)).toBe(true)
     state = doRebirth(state)
     expect(state.ore.eq(15)).toBe(true)
+    expect(state.miners).toBe(1)
     expect(state.facilities.pulse).toBe(0)
     expect(state.stage).toBe(1)
     expect(state.stageHp.eq(stageMaxHp(1, 1))).toBe(true)

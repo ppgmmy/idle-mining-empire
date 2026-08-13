@@ -689,7 +689,7 @@ export function createInitialState(now = Date.now()): GameState {
     crystals: ZERO,
     stardust: ZERO,
     clickPower: bn(1),
-    miners: 0,
+    miners: 1,
     minerCost: bn(15),
     drillLevel: 0,
     drillCost: bn(40),

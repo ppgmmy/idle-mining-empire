@@ -70,10 +70,10 @@ describe('side systems', () => {
     expect(challengeGoalOre('clickOnly', 3)).toBe(challengeGoalOre('clickOnly', 1) * 9)
 
     let state = createInitialState()
-    state = { ...state, rebirthCount: 1, clickPower: bn(1e6) }
+    state = { ...state, rebirthCount: 1, clickPower: bn(1e6), ore: bn(1234) }
     state = startChallenge(state, 'clickOnly-1')
     expect(state.activeChallengeId).toBe('clickOnly-1')
-    expect(state.ore.eq(0)).toBe(true)
+    expect(state.ore.eq(1234)).toBe(true)
 
     const goal = challengeGoalOre('clickOnly', 1)
     let guard = 0
