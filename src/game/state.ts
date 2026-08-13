@@ -3,7 +3,6 @@ import type {
   Affix,
   AffixId,
   ChallengeOffer,
-  ChallengeRecord,
   ChallengeReward,
   ChallengeRule,
   FacilityId,
