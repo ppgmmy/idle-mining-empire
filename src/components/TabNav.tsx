@@ -1,5 +1,6 @@
 import { tabLabel } from '../game/actions'
-import { isTabUnlocked, TABS, TAB_UNLOCK_REBIRTH, type TabId } from '../game/types'
+import { canAccessTab } from '../game/admin'
+import { TABS, TAB_UNLOCK_REBIRTH, type TabId } from '../game/types'
 
 type Props = {
   tab: TabId
@@ -11,7 +12,7 @@ export function TabNav({ tab, rebirthCount, onChange }: Props) {
   return (
     <nav className="tab-nav" aria-label="主選單">
       {TABS.map((id) => {
-        const unlocked = isTabUnlocked(id, rebirthCount)
+        const unlocked = canAccessTab(id, rebirthCount)
         const need = TAB_UNLOCK_REBIRTH[id]
         return (
           <button

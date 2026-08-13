@@ -41,9 +41,15 @@ import {
   stageVeinName,
   type RebirthPayout,
 } from './state'
+import { isAdmin } from './admin'
 import { grantOre, spendCrystals, spendOre, spendStardust } from './save'
-import type { FacilityId, GameState, TabId } from './types'
-import { OFFLINE_CAP_HOURS } from './types'
+import type { FacilityId, GameState, GearSlot, TabId } from './types'
+import { OFFLINE_CAP_HOURS, RARITY_ORDER } from './types'
+
+/** 管理員一鍵開通：研究保底等級 */
+const ADMIN_RESEARCH_FLOOR = 5
+/** 管理員打造等級保底（可擲到創世） */
+const ADMIN_CRAFT_LEVEL = 19
 
 let floaterId = 1
 
@@ -250,6 +256,59 @@ export function buyResearch(state: GameState, id: string): GameState {
     }
   }
   return next
+}
+
+/** 唯一管理員：一鍵開通全部研究（保底等級）＋三槽裝備 */
+export function adminUnlockResearchAndGear(state: GameState): GameState {
+  if (!isAdmin()) return state
+
+  const researchLevels = { ...state.researchLevels }
+  for (const node of RESEARCH_TREE) {
+    researchLevels[node.id] = Math.max(
+      researchLevels[node.id] ?? 0,
+      ADMIN_RESEARCH_FLOOR,
+    )
+  }
+
+  let next: GameState = {
+    ...state,
+    researchLevels,
+    macrosUnlocked: true,
+    automationLines: Math.max(1, state.automationLines),
+    craftLevel: Math.max(state.craftLevel, ADMIN_CRAFT_LEVEL),
+    crystals: state.crystals.add(bn(1000)),
+    stardust: state.stardust.add(bn(500)),
+  }
+
+  const slots: GearSlot[] = ['pick', 'suit', 'core']
+  let gear = [...next.gear]
+  const equipped = { ...next.equipped }
+  const topRarity = RARITY_ORDER[RARITY_ORDER.length - 1]!
+
+  for (const slot of slots) {
+    const existing = gear.find((g) => g.slot === slot)
+    if (existing) {
+      if (!equipped[slot]) equipped[slot] = existing.id
+      continue
+    }
+    const item = {
+      id: `admin-${slot}-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
+      name:
+        slot === 'pick'
+          ? '管理星鑄鑽槍'
+          : slot === 'suit'
+            ? '管理軌道礦工甲'
+            : '管理奇點反應核',
+      slot,
+      rarity: topRarity,
+      affixes: rollAffixes(topRarity, slot),
+      rerolls: 0,
+    }
+    gear = [...gear, item]
+    equipped[slot] = item.id
+  }
+
+  return { ...next, gear, equipped }
 }
 
 /** 打造裝備：晶體代價，隨庫存件數上升 */
@@ -558,6 +617,19 @@ export function attackBoss(state: GameState): GameState {
     oreFromHit: true,
     announceHit: true,
   })
+}
+
+/** 撤退：離開 Boss，無擊殺獎勵；套用召喚冷卻 */
+export function fleeBoss(state: GameState): GameState {
+  const boss = state.activeBoss
+  if (!boss) return state
+  let next: GameState = {
+    ...state,
+    activeBoss: null,
+    bossSpawnLockUntil: Date.now() + BOSS_SPAWN_LOCK_MS,
+  }
+  next = pushFloater(next, `撤退成功 · 已離開 ${boss.name}`)
+  return next
 }
 
 export function tabLabel(tab: TabId): string {

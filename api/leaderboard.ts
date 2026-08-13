@@ -68,32 +68,114 @@ function upsertEntries(entries: Entry[], incoming: Entry): Entry[] {
   return [...entries, merged]
 }
 
-function toRows(entries: Entry[], limit = 50): Row[] {
-  return [...entries]
-    .sort(compareEntries)
-    .slice(0, limit)
-    .map((e, i) => ({
-      rank: i + 1,
-      playerId: e.playerId,
-      name: e.name,
-      evolution: e.evolution,
-      rebirth: e.rebirth,
-    }))
+function rankAll(entries: Entry[]): Row[] {
+  return [...entries].sort(compareEntries).map((e, i) => ({
+    rank: i + 1,
+    playerId: e.playerId,
+    name: e.name,
+    evolution: e.evolution,
+    rebirth: e.rebirth,
+  }))
 }
 
-function parseStore(raw: string | null): Entry[] {
-  if (!raw) return []
+function buildLeaderboardView(
+  entries: Entry[],
+  playerId: string | null,
+  topLimit = 10,
+  nearbyRadius = 5,
+): {
+  total: number
+  me: Row | null
+  top: Row[]
+  nearby: Row[]
+  showNearby: boolean
+} {
+  const ranked = rankAll(entries)
+  const total = ranked.length
+  const meIndex =
+    playerId && playerId.length > 0
+      ? ranked.findIndex((r) => r.playerId === playerId)
+      : -1
+  const me = meIndex >= 0 ? ranked[meIndex]! : null
+  const top = ranked.slice(0, topLimit)
+  if (meIndex < 0 || meIndex < topLimit) {
+    return { total, me, top, nearby: [], showNearby: false }
+  }
+  const start = Math.max(0, meIndex - nearbyRadius)
+  const end = Math.min(ranked.length, meIndex + nearbyRadius + 1)
+  return {
+    total,
+    me,
+    top,
+    nearby: ranked.slice(start, end),
+    showNearby: true,
+  }
+}
+
+type StoreData = {
+  entries: Entry[]
+  lastDailyBumpDate?: string
+}
+
+function hongKongDateKey(now = Date.now()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Hong_Kong',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(now))
+}
+
+const DAILY_TOP_BUMP_COUNT = 100
+const DAILY_EVOLUTION_CHANCE = 0.0001
+
+function applyDailyTopBump(
+  entries: Entry[],
+  lastDailyBumpDate: string | undefined,
+  now = Date.now(),
+): { entries: Entry[]; lastDailyBumpDate: string; applied: boolean } {
+  const today = hongKongDateKey(now)
+  if (lastDailyBumpDate === today) {
+    return { entries, lastDailyBumpDate: today, applied: false }
+  }
+  const topIds = new Set(
+    [...entries]
+      .sort(compareEntries)
+      .slice(0, DAILY_TOP_BUMP_COUNT)
+      .map((e) => e.playerId),
+  )
+  const next = entries.map((e) => {
+    if (!topIds.has(e.playerId)) return e
+    if (Math.random() < DAILY_EVOLUTION_CHANCE) {
+      return { ...e, evolution: e.evolution + 1, updatedAt: now }
+    }
+    return { ...e, rebirth: e.rebirth + 1, updatedAt: now }
+  })
+  return { entries: next, lastDailyBumpDate: today, applied: true }
+}
+
+function parseStore(raw: string | null): StoreData {
+  if (!raw) return { entries: [] }
   try {
-    const parsed = JSON.parse(raw) as { entries?: Entry[] }
-    return Array.isArray(parsed.entries) ? parsed.entries : []
+    const parsed = JSON.parse(raw) as {
+      entries?: Entry[]
+      lastDailyBumpDate?: string
+    }
+    return {
+      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+      lastDailyBumpDate:
+        typeof parsed.lastDailyBumpDate === 'string'
+          ? parsed.lastDailyBumpDate
+          : undefined,
+    }
   } catch {
-    return []
+    return { entries: [] }
   }
 }
 
 type Store = {
-  load: () => Promise<Entry[]>
-  save: (entries: Entry[]) => Promise<void>
+  load: () => Promise<StoreData>
+  save: (data: StoreData) => Promise<void>
 }
 
 function upstashStore(): Store | null {
@@ -111,11 +193,11 @@ function upstashStore(): Store | null {
         },
         body: JSON.stringify(['GET', STORE_KEY]),
       })
-      if (!res.ok) return []
+      if (!res.ok) return { entries: [] }
       const data = (await res.json()) as { result?: string | null }
       return parseStore(typeof data.result === 'string' ? data.result : null)
     },
-    async save(entries) {
+    async save(data) {
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -125,7 +207,10 @@ function upstashStore(): Store | null {
         body: JSON.stringify([
           'SET',
           STORE_KEY,
-          JSON.stringify({ entries }),
+          JSON.stringify({
+            entries: data.entries,
+            lastDailyBumpDate: data.lastDailyBumpDate,
+          }),
         ]),
       })
       if (!res.ok) throw new Error(`upstash_set_${res.status}`)
@@ -147,14 +232,14 @@ function gistStore(): Store | null {
           'User-Agent': 'idle-mining-empire',
         },
       })
-      if (!res.ok) return []
+      if (!res.ok) return { entries: [] }
       const data = (await res.json()) as {
         files?: Record<string, { content?: string }>
       }
       const content = data.files?.[GIST_FILENAME]?.content ?? null
       return parseStore(content)
     },
-    async save(entries) {
+    async save(data) {
       const res = await fetch(`https://api.github.com/gists/${gistId}`, {
         method: 'PATCH',
         headers: {
@@ -166,7 +251,14 @@ function gistStore(): Store | null {
         body: JSON.stringify({
           files: {
             [GIST_FILENAME]: {
-              content: JSON.stringify({ entries }, null, 2),
+              content: JSON.stringify(
+                {
+                  entries: data.entries,
+                  lastDailyBumpDate: data.lastDailyBumpDate,
+                },
+                null,
+                2,
+              ),
             },
           },
         }),
@@ -174,6 +266,17 @@ function gistStore(): Store | null {
       if (!res.ok) throw new Error(`gist_patch_${res.status}`)
     },
   }
+}
+
+async function loadWithDailyBump(store: Store): Promise<StoreData> {
+  const data = await store.load()
+  const bumped = applyDailyTopBump(data.entries, data.lastDailyBumpDate)
+  const next: StoreData = {
+    entries: bumped.entries,
+    lastDailyBumpDate: bumped.lastDailyBumpDate,
+  }
+  if (bumped.applied) await store.save(next)
+  return next
 }
 
 function getStore(): Store | null {
@@ -195,15 +298,23 @@ async function handle(request: Request): Promise<Response> {
   if (!store) {
     return json(503, {
       error: 'leaderboard_unavailable',
-      rows: [],
+      total: 0,
+      me: null,
+      top: [],
+      nearby: [],
+      showNearby: false,
       hint: 'missing_storage_env',
     })
   }
 
   try {
     if (request.method === 'GET') {
-      const entries = await store.load()
-      return json(200, { rows: toRows(entries, 50) })
+      const url = new URL(request.url)
+      const playerId = sanitizePlayerId(
+        String(url.searchParams.get('playerId') ?? ''),
+      )
+      const data = await loadWithDailyBump(store)
+      return json(200, buildLeaderboardView(data.entries, playerId))
     }
 
     if (request.method === 'POST') {
@@ -221,15 +332,16 @@ async function handle(request: Request): Promise<Response> {
         return json(400, { error: 'invalid_payload' })
       }
 
-      const entries = upsertEntries(await store.load(), {
+      const data = await loadWithDailyBump(store)
+      data.entries = upsertEntries(data.entries, {
         playerId,
         name,
         evolution,
         rebirth,
         updatedAt: Date.now(),
       })
-      await store.save(entries)
-      return json(200, { rows: toRows(entries, 50) })
+      await store.save(data)
+      return json(200, buildLeaderboardView(data.entries, playerId))
     }
 
     if (request.method === 'OPTIONS') {

@@ -21,6 +21,7 @@ import {
   FACILITIES,
   facilityCost,
   facilityLevel,
+  effectiveAffixValue,
   formatAffixMult,
   formatResearchEffects,
   gearCapacity,
@@ -49,10 +50,10 @@ import {
   stageVeinName,
   stardustInterestRate,
 } from './game/state'
+import { canAccessTab } from './game/admin'
 import {
   AFFIX_META,
   BRANCH_LABEL,
-  isTabUnlocked,
   RARITY_LABEL,
   RARITY_ORDER,
   rarityTierNumber,
@@ -269,8 +270,20 @@ export default function App() {
               </div>
             </div>
 
-            {!state.activeBoss ? (
-              <div className="explore-actions">
+            <div className="explore-actions">
+              {state.activeBoss ? (
+                <button
+                  type="button"
+                  className="secondary-btn flee-boss-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    game.fleeBoss()
+                    setPulse((p) => p + 1)
+                  }}
+                >
+                  撤退離開 Boss（無獎勵）
+                </button>
+              ) : (
                 <button
                   type="button"
                   className="secondary-btn spawn-boss-btn"
@@ -297,8 +310,8 @@ export default function App() {
                     }`
                   })()}
                 </button>
-              </div>
-            ) : null}
+              )}
+            </div>
           </section>
         ) : null}
 
@@ -431,7 +444,9 @@ export default function App() {
                             {def.name} · Lv{lv}
                           </span>
                           <span className="upgrade-chip-blurb">
-                            {unlocked ? def.blurb : def.unlockHint || '未解鎖'}
+                            {unlocked
+                              ? def.effectLine(lv)
+                              : def.unlockHint || '未解鎖'}
                           </span>
                         </span>
                         <span className="upgrade-chip-cost">{costLabel}</span>
@@ -444,11 +459,11 @@ export default function App() {
           </section>
         ) : null}
 
-        {game.tab === 'research' && isTabUnlocked('research', state.rebirthCount) ? (
+        {game.tab === 'research' && canAccessTab('research', state.rebirthCount) ? (
           <section className="panel research-panel">
             <h2>研究流派</h2>
             <p className="lede">
-              四線無限升級 · 每級加幅×1.1 · 與升級／裝備互乘疊加
+              四線無限升級 · 每級加幅×1.05 · 與升級／裝備互乘疊加
             </p>
 
             <div className="branch-tabs" role="tablist" aria-label="研究流派">
@@ -516,7 +531,7 @@ export default function App() {
           </section>
         ) : null}
 
-        {game.tab === 'gear' && isTabUnlocked('gear', state.rebirthCount) ? (
+        {game.tab === 'gear' && canAccessTab('gear', state.rebirthCount) ? (
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
@@ -705,15 +720,22 @@ export default function App() {
                             {item.affixes.map((a) => {
                               const info = AFFIX_META[a.id]
                               const primary = isSlotPrimary(item.slot, a.id)
+                              const shown = effectiveAffixValue(item.slot, a)
                               return (
                                 <li
                                   key={`${item.id}-${a.id}-${a.value}`}
-                                  className={primary ? 'affix-primary' : undefined}
-                                  title={`${info.label}：${a.value >= 0 ? '+' : ''}${Math.round(a.value * 100)}% → ${formatAffixMult(a.value)}（${info.effect}）`}
+                                  className={primary ? 'affix-primary' : 'affix-secondary'}
+                                  title={`${info.label}：${formatAffixMult(shown)}${
+                                    primary ? '' : '（副＝主 50%）'
+                                  }（${info.effect}）`}
                                 >
-                                  <span className="affix-tag">{primary ? '主' : ''}</span>
+                                  <span className="affix-tag">
+                                    {primary ? '主' : '副'}
+                                  </span>
                                   <span className="affix-name">{info.short}</span>
-                                  <span className="affix-val">{formatAffixMult(a.value)}</span>
+                                  <span className="affix-val">
+                                    {formatAffixMult(shown)}
+                                  </span>
                                   <span className="affix-fx">{info.effect}</span>
                                 </li>
                               )
@@ -738,6 +760,8 @@ export default function App() {
           <LeaderboardPanel
             evolution={state.evolutionCount ?? 0}
             rebirth={state.rebirthCount}
+            isAdmin={game.isAdmin}
+            onAdminUnlock={game.adminUnlock}
           />
         ) : null}
 
@@ -783,7 +807,7 @@ export default function App() {
             <div className="stack muted-block">
               <h3>限制挑戰</h3>
               <p className="hint">
-                三線無限級 · 目標每級×3 · 通關永久獎勵入帳 · 紀錄撳入先睇
+                三線無限級 · 目標每級×4 · 通關永久獎勵入帳 · 紀錄撳入先睇
               </p>
               {challengeOffers.map((c) => {
                 const unlocked = state.rebirthCount >= c.unlockRebirth

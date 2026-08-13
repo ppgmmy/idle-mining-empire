@@ -86,14 +86,126 @@ export function upsertEntries(
 }
 
 export function toRows(entries: LeaderboardEntry[], limit = 50): LeaderboardRow[] {
-  return [...entries]
-    .sort(compareEntries)
-    .slice(0, limit)
-    .map((e, i) => ({
-      rank: i + 1,
-      playerId: e.playerId,
-      name: e.name,
-      evolution: e.evolution,
-      rebirth: e.rebirth,
-    }))
+  return rankAll(entries).slice(0, limit)
+}
+
+export function rankAll(entries: LeaderboardEntry[]): LeaderboardRow[] {
+  return [...entries].sort(compareEntries).map((e, i) => ({
+    rank: i + 1,
+    playerId: e.playerId,
+    name: e.name,
+    evolution: e.evolution,
+    rebirth: e.rebirth,
+  }))
+}
+
+export type LeaderboardView = {
+  total: number
+  me: LeaderboardRow | null
+  top: LeaderboardRow[]
+  nearby: LeaderboardRow[]
+  /** 附近區同頂部唔連續時要顯示分隔 */
+  showNearby: boolean
+}
+
+/**
+ * 頂部榜 +（如需要）以自己為中心嘅附近排名。
+ * 自己若已在 top 內，就唔再重複 nearby。
+ */
+export function buildLeaderboardView(
+  entries: LeaderboardEntry[],
+  playerId: string | null | undefined,
+  opts?: { topLimit?: number; nearbyRadius?: number },
+): LeaderboardView {
+  const topLimit = opts?.topLimit ?? 10
+  const nearbyRadius = opts?.nearbyRadius ?? 5
+  const ranked = rankAll(entries)
+  const total = ranked.length
+  const meIndex =
+    playerId && playerId.length > 0
+      ? ranked.findIndex((r) => r.playerId === playerId)
+      : -1
+  const me = meIndex >= 0 ? ranked[meIndex]! : null
+  const top = ranked.slice(0, topLimit)
+
+  if (meIndex < 0 || meIndex < topLimit) {
+    return { total, me, top, nearby: [], showNearby: false }
+  }
+
+  const start = Math.max(0, meIndex - nearbyRadius)
+  const end = Math.min(ranked.length, meIndex + nearbyRadius + 1)
+  const nearby = ranked.slice(start, end)
+  return { total, me, top, nearby, showNearby: true }
+}
+
+/** 每日結算用日期鍵（香港時間） */
+export function hongKongDateKey(now = Date.now()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Hong_Kong',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(now))
+}
+
+export const DAILY_TOP_BUMP_COUNT = 100
+/** 進化機率 0.01%；其餘轉生 */
+export const DAILY_EVOLUTION_CHANCE = 0.0001
+
+export type DailyBumpResult = {
+  entries: LeaderboardEntry[]
+  lastDailyBumpDate: string
+  applied: boolean
+  evolutionBumps: number
+  rebirthBumps: number
+}
+
+/**
+ * 每日一次：當時頭 N 名各隨機 +1
+ * 進化機率 DAILY_EVOLUTION_CHANCE，否則轉生 +1
+ */
+export function applyDailyTopBump(
+  entries: LeaderboardEntry[],
+  lastDailyBumpDate: string | undefined,
+  opts?: { now?: number; random?: () => number },
+): DailyBumpResult {
+  const now = opts?.now ?? Date.now()
+  const random = opts?.random ?? Math.random
+  const today = hongKongDateKey(now)
+  if (lastDailyBumpDate === today) {
+    return {
+      entries,
+      lastDailyBumpDate: today,
+      applied: false,
+      evolutionBumps: 0,
+      rebirthBumps: 0,
+    }
+  }
+
+  const topIds = new Set(
+    [...entries]
+      .sort(compareEntries)
+      .slice(0, DAILY_TOP_BUMP_COUNT)
+      .map((e) => e.playerId),
+  )
+
+  let evolutionBumps = 0
+  let rebirthBumps = 0
+  const next = entries.map((e) => {
+    if (!topIds.has(e.playerId)) return e
+    if (random() < DAILY_EVOLUTION_CHANCE) {
+      evolutionBumps += 1
+      return { ...e, evolution: e.evolution + 1, updatedAt: now }
+    }
+    rebirthBumps += 1
+    return { ...e, rebirth: e.rebirth + 1, updatedAt: now }
+  })
+
+  return {
+    entries: next,
+    lastDailyBumpDate: today,
+    applied: true,
+    evolutionBumps,
+    rebirthBumps,
+  }
 }

@@ -18,152 +18,147 @@ export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'pulse-click',
     name: '脈衝點擊',
-    desc: '主動主軸：點擊為主，其餘同步小幅提升',
+    desc: '主動流派：只加點擊倍率',
     branch: 'active',
     baseCost: 8_000,
     costGrowth: 1.85,
-    effectPerLevel: { clickMult: 0.04, idleRate: 0.008, minePower: 0.012, offlineBonus: 0.008 },
+    effectPerLevel: { clickMult: 0.04 },
   },
   {
     id: 'impact-burst',
     name: '衝擊爆發',
-    desc: '主動主軸：點擊＋開採，其餘同步提升',
+    desc: '主動流派：只加開採力',
     branch: 'active',
     baseCost: 14_000,
     costGrowth: 1.9,
-    effectPerLevel: { clickMult: 0.025, idleRate: 0.008, minePower: 0.02, offlineBonus: 0.008 },
+    effectPerLevel: { minePower: 0.03 },
   },
   {
     id: 'frenzy-tap',
     name: '狂熱連點',
-    desc: '主動主軸：連點爆發，其餘同步小幅提升',
+    desc: '主動流派：只加點擊倍率',
     branch: 'active',
     baseCost: 22_000,
     costGrowth: 1.95,
-    effectPerLevel: { clickMult: 0.05, idleRate: 0.01, minePower: 0.014, offlineBonus: 0.008 },
+    effectPerLevel: { clickMult: 0.05 },
   },
   {
     id: 'overclock-strike',
     name: '超頻一擊',
-    desc: '主動主軸：開採力，其餘同步小幅提升',
+    desc: '主動流派：只加開採力',
     branch: 'active',
     baseCost: 35_000,
     costGrowth: 2.05,
-    effectPerLevel: { clickMult: 0.012, idleRate: 0.008, minePower: 0.035, offlineBonus: 0.01 },
+    effectPerLevel: { minePower: 0.035 },
   },
   {
     id: 'deep-veins',
     name: '深層礦脈',
-    desc: '閒置主軸：離線為主，其餘同步小幅提升',
+    desc: '閒置流派：只加離線收益',
     branch: 'idle',
     baseCost: 10_000,
     costGrowth: 1.85,
-    effectPerLevel: { clickMult: 0.008, idleRate: 0.012, minePower: 0.01, offlineBonus: 0.03 },
+    effectPerLevel: { offlineBonus: 0.03 },
   },
   {
     id: 'auto-drill',
     name: '自動鑽頭',
-    desc: '閒置主軸：掛機產量，其餘同步小幅提升',
+    desc: '閒置流派：只加閒置產量',
     branch: 'idle',
     baseCost: 16_000,
     costGrowth: 1.9,
-    effectPerLevel: { clickMult: 0.008, idleRate: 0.035, minePower: 0.012, offlineBonus: 0.01 },
+    effectPerLevel: { idleRate: 0.035 },
   },
   {
     id: 'drone-swarm',
     name: '無人機群',
-    desc: '閒置主軸：掛機＋開採，其餘同步提升',
+    desc: '閒置流派：只加閒置產量',
     branch: 'idle',
     baseCost: 28_000,
     costGrowth: 1.95,
-    effectPerLevel: { clickMult: 0.01, idleRate: 0.03, minePower: 0.012, offlineBonus: 0.01 },
+    effectPerLevel: { idleRate: 0.03 },
   },
   {
     id: 'sleep-harvest',
     name: '休眠收割',
-    desc: '閒置主軸：離線收割，其餘同步小幅提升',
+    desc: '閒置流派：只加離線收益',
     branch: 'idle',
     baseCost: 40_000,
     costGrowth: 2.05,
-    effectPerLevel: { clickMult: 0.008, idleRate: 0.012, minePower: 0.01, offlineBonus: 0.04 },
+    effectPerLevel: { offlineBonus: 0.04 },
   },
   {
     id: 'macro-kernel',
     name: '巨集核心',
-    desc: '解鎖自動請礦工；全線同步強化',
+    desc: '解鎖自動請礦工；只加開採力',
     branch: 'automation',
     baseCost: 25_000,
     costGrowth: 1.95,
-    effectPerLevel: { clickMult: 0.01, idleRate: 0.01, minePower: 0.025, offlineBonus: 0.01 },
+    effectPerLevel: { minePower: 0.025 },
     unlocksMacros: true,
   },
   {
     id: 'logic-bus',
     name: '邏輯匯流排',
-    desc: '自動化主軸：閒置為主，其餘同步提升',
+    desc: '自動化流派：只加閒置產量',
     branch: 'automation',
     baseCost: 36_000,
     costGrowth: 2.0,
-    effectPerLevel: { clickMult: 0.01, idleRate: 0.028, minePower: 0.012, offlineBonus: 0.01 },
+    effectPerLevel: { idleRate: 0.028 },
   },
   {
     id: 'relay-net',
     name: '中繼網絡',
-    desc: '自動化主軸：離線＋點擊，其餘同步提升',
+    desc: '自動化流派：只加離線收益',
     branch: 'automation',
     baseCost: 48_000,
     costGrowth: 2.08,
-    effectPerLevel: { clickMult: 0.02, idleRate: 0.01, minePower: 0.012, offlineBonus: 0.02 },
+    effectPerLevel: { offlineBonus: 0.025 },
   },
   {
     id: 'script-forge',
     name: '腳本鍛造',
-    desc: '自動化主軸：點擊為主，其餘同步提升',
+    desc: '自動化流派：只加點擊倍率',
     branch: 'automation',
     baseCost: 65_000,
     costGrowth: 2.12,
-    effectPerLevel: { clickMult: 0.045, idleRate: 0.01, minePower: 0.014, offlineBonus: 0.01 },
+    effectPerLevel: { clickMult: 0.045 },
   },
   {
     id: 'ore-assay',
     name: '礦石化驗',
-    desc: '經濟主軸：開採為主，其餘同步提升',
+    desc: '經濟流派：只加開採力',
     branch: 'economy',
     baseCost: 12_000,
     costGrowth: 1.9,
-    effectPerLevel: { clickMult: 0.01, idleRate: 0.01, minePower: 0.028, offlineBonus: 0.01 },
+    effectPerLevel: { minePower: 0.028 },
   },
   {
     id: 'crystal-lens',
     name: '晶體透鏡',
-    desc: '經濟主軸：離線＋閒置，其餘同步提升',
+    desc: '經濟流派：只加離線收益',
     branch: 'economy',
     baseCost: 26_000,
     costGrowth: 1.98,
-    effectPerLevel: { clickMult: 0.008, idleRate: 0.015, minePower: 0.01, offlineBonus: 0.025 },
+    effectPerLevel: { offlineBonus: 0.025 },
   },
   {
     id: 'market-pulse',
     name: '市場脈動',
-    desc: '經濟主軸：點擊＋開採，其餘同步提升',
+    desc: '經濟流派：只加點擊倍率',
     branch: 'economy',
     baseCost: 42_000,
     costGrowth: 2.05,
-    effectPerLevel: { clickMult: 0.022, idleRate: 0.01, minePower: 0.022, offlineBonus: 0.01 },
+    effectPerLevel: { clickMult: 0.025 },
   },
   {
     id: 'singularity-ledger',
     name: '奇點帳本',
-    desc: '經濟主軸：四項能力同步強化',
+    desc: '經濟流派：只加開採力',
     branch: 'economy',
     baseCost: 80_000,
     costGrowth: 2.2,
-    effectPerLevel: {
-      clickMult: 0.016,
-      idleRate: 0.016,
-      offlineBonus: 0.016,
-      minePower: 0.016,
-    },
+    effectPerLevel: { minePower: 0.032 },
   },
 ]
 
@@ -188,38 +183,43 @@ export const CHALLENGE_LINES: Record<
     desc: '禁用閒置產量，只靠手動挖到目標',
     purpose: '徒手開採考驗',
     unlockRebirth: 1,
-    baseGoal: 8_000,
+    baseGoal: 40_000,
   },
   noAutomation: {
     name: '停機挑戰',
     desc: '禁用自動化，手動推進達標',
     purpose: '唔靠自動都推得郁',
     unlockRebirth: 2,
-    baseGoal: 35_000,
+    baseGoal: 150_000,
   },
   halfIdle: {
     name: '半速軌道',
     desc: '閒置產量減半仍然達標',
     purpose: '半速掛機壓力測',
     unlockRebirth: 5,
-    baseGoal: 120_000,
+    baseGoal: 500_000,
   },
 }
 
-/** 難度：目標礦石每級 ×3（大幅提升） */
+/** 難度：目標礦石每級 ×4（大幅提升） */
+export const CHALLENGE_GOAL_GROWTH = 4
+
 export function challengeGoalOre(rule: ChallengeRule, level: number): number {
   const lv = Math.max(1, Math.floor(level))
   const base = CHALLENGE_LINES[rule].baseGoal
-  return Math.floor(base * Math.pow(3, lv - 1))
+  return Math.floor(base * Math.pow(CHALLENGE_GOAL_GROWTH, lv - 1))
 }
+
+/** 挑戰獎勵整體保留約 25%，成長亦放慢 */
+const CHALLENGE_REWARD_KEEP = 0.25
 
 export function challengeReward(rule: ChallengeRule, level: number): ChallengeReward {
   const lv = Math.max(1, Math.floor(level))
-  const scale = Math.pow(1.18, lv - 1)
+  const scale = Math.pow(1.06, lv - 1) * CHALLENGE_REWARD_KEEP
 
   if (rule === 'clickOnly') {
     const click = Number((0.012 * scale).toFixed(4))
-    const crystals = Math.floor(12 + lv * 8 * scale)
+    const crystals = Math.max(1, Math.floor((12 + lv * 8) * scale))
     return {
       label: `永久點擊+${Math.round(click * 1000) / 10}% · 晶體+${crystals}`,
       crystals,
@@ -228,8 +228,8 @@ export function challengeReward(rule: ChallengeRule, level: number): ChallengeRe
   }
   if (rule === 'noAutomation') {
     const mine = Number((0.01 * scale).toFixed(4))
-    const stardust = Math.floor(2 + lv * 1.5 * scale)
-    const lines = lv % 5 === 0 ? 1 : 0
+    const stardust = Math.max(1, Math.floor((2 + lv * 1.5) * scale))
+    const lines = lv % 10 === 0 ? 1 : 0
     return {
       label: `永久開採+${Math.round(mine * 1000) / 10}% · 星塵+${stardust}${
         lines ? ' · 自動產線+1' : ''
@@ -469,6 +469,16 @@ export function isSlotPrimary(slot: GearSlot, id: AffixId): boolean {
   return SLOT_META[slot].primary.includes(id)
 }
 
+/** 裝備副詞條相對主詞條嘅效力 */
+export const SECONDARY_AFFIX_FACTOR = 0.5
+
+/** 主詞條全額；副詞條按 SECONDARY_AFFIX_FACTOR（預設一半） */
+export function effectiveAffixValue(slot: GearSlot, affix: Affix): number {
+  const value = affix.value
+  if (isSlotPrimary(slot, affix.id)) return value
+  return Number((value * SECONDARY_AFFIX_FACTOR).toFixed(6))
+}
+
 export function nextRarity(rarity: GearItem['rarity']): GearItem['rarity'] {
   const i = rarityIndex(rarity)
   if (i < 0) return 'common'
@@ -589,8 +599,8 @@ export type FacilityDef = {
   effectLine: (level: number) => string
 }
 
-/** 升級線每級升幅保留 25%（下降 75%） */
-export const UPGRADE_GAIN_KEEP = 0.25
+/** 升級線每級升幅保留 10%（再削） */
+export const UPGRADE_GAIN_KEEP = 0.1
 
 export const PULSE_PER_LEVEL = 1 + 0.12 * UPGRADE_GAIN_KEEP
 export const CONVEYOR_PER_LEVEL = 1 + 0.14 * UPGRADE_GAIN_KEEP
@@ -609,6 +619,10 @@ function scaleCostGrowth(raw: number): number {
   return 1 + (raw - 1) * UPGRADE_GAIN_KEEP
 }
 
+function fmtMult(n: number): string {
+  return n >= 10 ? n.toFixed(2) : n.toFixed(3)
+}
+
 export const FACILITIES: FacilityDef[] = [
   {
     id: 'pulse',
@@ -619,10 +633,10 @@ export const FACILITIES: FacilityDef[] = [
     costGrowth: scaleCostGrowth(1.62),
     unlockHint: '',
     unlocked: () => true,
-    effectLine: (lv) =>
-      lv <= 0
-        ? `每級點擊 ×${PULSE_PER_LEVEL.toFixed(3)}`
-        : `點擊 ×${(PULSE_PER_LEVEL ** lv).toFixed(3)}（下級 ×${(PULSE_PER_LEVEL ** (lv + 1)).toFixed(3)}）`,
+    effectLine: (lv) => {
+      const total = lv <= 0 ? 1 : PULSE_PER_LEVEL ** lv
+      return `已點擊×${fmtMult(total)} · 每次×${fmtMult(PULSE_PER_LEVEL)}`
+    },
   },
   {
     id: 'conveyor',
@@ -633,10 +647,10 @@ export const FACILITIES: FacilityDef[] = [
     costGrowth: scaleCostGrowth(1.68),
     unlockHint: '需 3 名礦工',
     unlocked: (s) => s.miners >= 3,
-    effectLine: (lv) =>
-      lv <= 0
-        ? `每級閒置 ×${CONVEYOR_PER_LEVEL.toFixed(3)}`
-        : `閒置 ×${(CONVEYOR_PER_LEVEL ** lv).toFixed(3)}（下級 ×${(CONVEYOR_PER_LEVEL ** (lv + 1)).toFixed(3)}）`,
+    effectLine: (lv) => {
+      const total = lv <= 0 ? 1 : CONVEYOR_PER_LEVEL ** lv
+      return `已閒置×${fmtMult(total)} · 每次×${fmtMult(CONVEYOR_PER_LEVEL)}`
+    },
   },
   {
     id: 'blast',
@@ -648,9 +662,8 @@ export const FACILITIES: FacilityDef[] = [
     unlockHint: '需鑽頭 Lv2',
     unlocked: (s) => s.drillLevel >= 2,
     effectLine: (lv) => {
-      if (lv <= 0) return '開採有機率暴擊'
-      const { chance, mult } = blastStats(lv)
-      return `暴擊 ${(chance * 100).toFixed(1)}% · ×${mult.toFixed(2)}`
+      const cur = blastStats(Math.max(0, lv))
+      return `已暴擊${(cur.chance * 100).toFixed(1)}%/×${cur.mult.toFixed(2)} · 每次+${(BLAST_CHANCE_PER_LEVEL * 100).toFixed(2)}%/+${BLAST_MULT_PER_LEVEL.toFixed(3)}`
     },
   },
   {
@@ -662,10 +675,11 @@ export const FACILITIES: FacilityDef[] = [
     costGrowth: scaleCostGrowth(1.78),
     unlockHint: '需 8 名礦工',
     unlocked: (s) => s.miners >= 8,
-    effectLine: (lv) =>
-      lv <= 0
-        ? `每級礦工效率 ×${(1 + FOREMAN_PER_LEVEL).toFixed(3)}`
-        : `礦工效率 ×${Math.pow(1 + FOREMAN_PER_LEVEL, lv).toFixed(3)}`,
+    effectLine: (lv) => {
+      const per = 1 + FOREMAN_PER_LEVEL
+      const total = lv <= 0 ? 1 : Math.pow(per, lv)
+      return `已礦工效×${fmtMult(total)} · 每次×${fmtMult(per)}`
+    },
   },
 ]
 
@@ -836,26 +850,28 @@ const RESEARCH_AFFIX_ORDER: AffixId[] = [
   'offlineBonus',
 ]
 
-/** 研究每級加幅成長：第 n 級加幅 = 底值 × 1.1^(n-1) */
-export const RESEARCH_LEVEL_GAIN_GROWTH = 1.1
+/** 研究每級加幅成長：第 n 級加幅 = 底值 × 1.05^(n-1) */
+export const RESEARCH_LEVEL_GAIN_GROWTH = 1.05
 
-/** 顯示用：該研究目前等級下四項能力（每級互乘，加幅×1.1） */
+/** 顯示用：該研究目前等級下嘅單一能力（每級互乘，加幅跟 RESEARCH_LEVEL_GAIN_GROWTH） */
 export function formatResearchEffects(
   node: ResearchNode,
   level: number,
 ): string {
-  return RESEARCH_AFFIX_ORDER.map((id) => {
-    const per = node.effectPerLevel[id] ?? 0
-    const short = AFFIX_META[id].short
-    if (level <= 0) {
-      return `${short}×${(1 + per).toFixed(3)}起/級(×${RESEARCH_LEVEL_GAIN_GROWTH})`
-    }
-    const mult = researchNodeMult(node, level, id)
-    return `${short}×${mult >= 1.1 ? mult.toFixed(2) : mult.toFixed(3)}`
-  }).join(' · ')
+  return RESEARCH_AFFIX_ORDER.filter((id) => (node.effectPerLevel[id] ?? 0) > 0)
+    .map((id) => {
+      const per = node.effectPerLevel[id] ?? 0
+      const short = AFFIX_META[id].short
+      if (level <= 0) {
+        return `${short}×${(1 + per).toFixed(3)}起/級(×${RESEARCH_LEVEL_GAIN_GROWTH})`
+      }
+      const mult = researchNodeMult(node, level, id)
+      return `${short}×${mult >= 1.1 ? mult.toFixed(2) : mult.toFixed(3)}`
+    })
+    .join(' · ')
 }
 
-/** 第 levelIndex（0-based）級嘅加幅：per × 1.1^levelIndex */
+/** 第 levelIndex（0-based）級嘅加幅：per × GROWTH^levelIndex */
 export function researchLevelGain(per: number, levelIndex: number): number {
   if (per <= 0) return 0
   return per * Math.pow(RESEARCH_LEVEL_GAIN_GROWTH, Math.max(0, levelIndex))
@@ -863,7 +879,7 @@ export function researchLevelGain(per: number, levelIndex: number): number {
 
 /**
  * 單一研究節點對某詞條的互乘倍率：
- * Π_{k=0..L-1} (1 + per × 1.1^k)
+ * Π_{k=0..L-1} (1 + per × GROWTH^k)
  */
 export function researchNodeMult(
   node: ResearchNode,
@@ -955,12 +971,12 @@ export function canStartChallenge(state: GameState, id: string): boolean {
   return state.rebirthCount >= offer.unlockRebirth
 }
 
-/** 詞庫內所有裝備詞條互乘：(1+v1)×(1+v2)×… */
+/** 詞庫內所有裝備詞條互乘：(1+v1)×(1+v2)×…；副詞條以 effectiveAffixValue 計 */
 export function gearAffixProduct(state: GameState, id: AffixId): number {
   let product = 1
   for (const item of state.gear) {
     for (const affix of item.affixes) {
-      if (affix.id === id) product *= 1 + affix.value
+      if (affix.id === id) product *= 1 + effectiveAffixValue(item.slot, affix)
     }
   }
   return product

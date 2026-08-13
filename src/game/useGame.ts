@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useEffectEvent } from 'react'
 import {
+  adminUnlockResearchAndGear,
   applyOfflineGains,
   attackBoss,
+  fleeBoss,
   buyDrill,
   buyDrillTimes,
   buyFacility,
@@ -24,11 +26,13 @@ import {
   tick,
   toggleAutomation,
 } from './actions'
+import { canAccessTab, isAdmin } from './admin'
+import { bn, formatBN } from './bigNumber'
 import { submitLeaderboardScore } from './leaderboard'
 import { calcRebirthPayout, createInitialState } from './state'
 import { loadGame, saveGame } from './save'
 import type { FacilityId, GameState, TabId } from './types'
-import { isTabUnlocked, TICK_MS } from './types'
+import { TICK_MS } from './types'
 
 const LEADERBOARD_SYNC_MS = 60_000
 
@@ -54,11 +58,14 @@ export function useGame() {
   useEffect(() => {
     const loaded = loadGame()
     if (loaded) {
-      const { state: withOffline, gainedSeconds } = applyOfflineGains(loaded)
+      const { state: withOffline, gainedSeconds, gainedOre } =
+        applyOfflineGains(loaded)
       setState(withOffline)
       if (gainedSeconds > 5) {
+        const mins = Math.floor(gainedSeconds / 60)
+        const oreLabel = formatBN(bn(gainedOre))
         setBannerLeaving(false)
-        setBanner(`歡迎返嚟：離線 ${Math.floor(gainedSeconds / 60)} 分鐘收益已入帳`)
+        setBanner(`歡迎返嚟：離線 ${mins} 分鐘 · 入帳 +${oreLabel} 礦石`)
       }
     }
     setReady(true)
@@ -89,7 +96,7 @@ export function useGame() {
   }, [banner])
 
   useEffect(() => {
-    if (!isTabUnlocked(tab, state.rebirthCount)) {
+    if (!canAccessTab(tab, state.rebirthCount)) {
       setTab('mine')
     }
   }, [tab, state.rebirthCount])
@@ -135,19 +142,27 @@ export function useGame() {
     state,
     tab,
     setTab: (next: TabId) => {
-      if (isTabUnlocked(next, stateRef.current.rebirthCount)) setTab(next)
+      if (canAccessTab(next, stateRef.current.rebirthCount)) setTab(next)
     },
     ready,
+    isAdmin: isAdmin(),
     banner,
     bannerLeaving,
     dismissBanner: () => {
       setBannerLeaving(false)
       setBanner(null)
     },
+    adminUnlock: () => {
+      if (!isAdmin()) return
+      setState((s) => adminUnlockResearchAndGear(s))
+      setBannerLeaving(false)
+      setBanner('管理員：已開通研究與裝備')
+    },
     mine: () => setState((s) => mineClick(s)),
     strikeStage: () => setState((s) => strikeStage(s)),
     spawnBoss: () => setState((s) => spawnBoss(s)),
     attackBoss: () => setState((s) => attackBoss(s)),
+    fleeBoss: () => setState((s) => fleeBoss(s)),
     buyMiner: () => setState((s) => buyMiner(s)),
     buyDrill: () => setState((s) => buyDrill(s)),
     buyMinerTimes: (times: number) => setState((s) => buyMinerTimes(s, times)),

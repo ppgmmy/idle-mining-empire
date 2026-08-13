@@ -1,9 +1,9 @@
-import type { LeaderboardRow } from './leaderboardCore'
+import type { LeaderboardRow, LeaderboardView } from './leaderboardCore'
 
 const PLAYER_ID_KEY = 'idle-mining-empire-player-id'
 const PLAYER_NAME_KEY = 'idle-mining-empire-player-name'
 
-export type { LeaderboardRow }
+export type { LeaderboardRow, LeaderboardView }
 
 function randomId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -50,26 +50,54 @@ export function setPlayerName(name: string): string | null {
   return trimmed
 }
 
-function leaderboardUrl(path = '/api/leaderboard'): string {
-  if (typeof window === 'undefined') return path
-  return new URL(path, window.location.origin).toString()
+function leaderboardUrl(playerId?: string): string {
+  const path = '/api/leaderboard'
+  if (typeof window === 'undefined') {
+    return playerId
+      ? `${path}?playerId=${encodeURIComponent(playerId)}`
+      : path
+  }
+  const url = new URL(path, window.location.origin)
+  if (playerId) url.searchParams.set('playerId', playerId)
+  return url.toString()
 }
 
-export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
-  const res = await fetch(leaderboardUrl(), {
+function parseView(data: unknown): LeaderboardView {
+  const d = data as Partial<LeaderboardView> & { rows?: LeaderboardRow[] }
+  if (Array.isArray(d.top)) {
+    return {
+      total: typeof d.total === 'number' ? d.total : d.top.length,
+      me: d.me ?? null,
+      top: d.top,
+      nearby: Array.isArray(d.nearby) ? d.nearby : [],
+      showNearby: Boolean(d.showNearby),
+    }
+  }
+  // 舊 API 兼容：只有 rows
+  const rows = Array.isArray(d.rows) ? d.rows : []
+  return {
+    total: rows.length,
+    me: null,
+    top: rows,
+    nearby: [],
+    showNearby: false,
+  }
+}
+
+export async function fetchLeaderboard(): Promise<LeaderboardView> {
+  const res = await fetch(leaderboardUrl(getPlayerId()), {
     cache: 'no-store',
     headers: { Accept: 'application/json' },
   })
   if (!res.ok) throw new Error(`leaderboard_get_${res.status}`)
-  const data = (await res.json()) as { rows?: LeaderboardRow[] }
-  return Array.isArray(data.rows) ? data.rows : []
+  return parseView(await res.json())
 }
 
 export async function submitLeaderboardScore(input: {
   evolution: number
   rebirth: number
   name?: string
-}): Promise<LeaderboardRow[]> {
+}): Promise<LeaderboardView> {
   const name = input.name ?? getPlayerName()
   const res = await fetch(leaderboardUrl(), {
     method: 'POST',
@@ -86,6 +114,5 @@ export async function submitLeaderboardScore(input: {
     }),
   })
   if (!res.ok) throw new Error(`leaderboard_post_${res.status}`)
-  const data = (await res.json()) as { rows?: LeaderboardRow[] }
-  return Array.isArray(data.rows) ? data.rows : []
+  return parseView(await res.json())
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { attackBoss, spawnBoss, strikeStage, tick } from './actions'
+import { attackBoss, fleeBoss, spawnBoss, strikeStage, tick } from './actions'
 import { bn } from './bigNumber'
 import {
   BOSS_SPAWN_LOCK_MS,
@@ -104,5 +104,18 @@ describe('boss encounter', () => {
 
     state = { ...state, bossSpawnLockUntil: Date.now() - 1 }
     expect(canSpawnBoss(state)).toBe(true)
+  })
+
+  it('fleeBoss clears fight without rewards and locks respawn', () => {
+    let state = createInitialState()
+    state = { ...state, crystals: bn(10), bossKills: 2 }
+    state = spawnBoss(state)
+    const beforeCrystals = state.crystals
+    state = fleeBoss(state)
+    expect(state.activeBoss).toBeNull()
+    expect(state.bossKills).toBe(2)
+    expect(state.crystals.eq(beforeCrystals)).toBe(true)
+    expect(canSpawnBoss(state)).toBe(false)
+    expect(canAdvanceStage(state)).toBe(true)
   })
 })

@@ -16,6 +16,7 @@ import {
   researchNodeMult,
   rollAffixes,
   rollGear,
+  RESEARCH_LEVEL_GAIN_GROWTH,
   RESEARCH_TREE,
   stardustInterestRate,
   sumAffix,
@@ -66,8 +67,8 @@ describe('side systems', () => {
   })
 
   it('challenge goals scale steeply and clear writes permanent record', () => {
-    expect(challengeGoalOre('clickOnly', 2)).toBe(challengeGoalOre('clickOnly', 1) * 3)
-    expect(challengeGoalOre('clickOnly', 3)).toBe(challengeGoalOre('clickOnly', 1) * 9)
+    expect(challengeGoalOre('clickOnly', 2)).toBe(challengeGoalOre('clickOnly', 1) * 4)
+    expect(challengeGoalOre('clickOnly', 3)).toBe(challengeGoalOre('clickOnly', 1) * 16)
 
     let state = createInitialState()
     state = { ...state, rebirthCount: 1, clickPower: bn(1e6), ore: bn(1234) }
@@ -164,12 +165,22 @@ describe('side systems', () => {
     const b = {
       ...rollGear('suit'),
       id: 'g2',
+      // suit 主詞條唔包括 clickMult → 副詞條只計 50%
       affixes: [{ id: 'clickMult' as const, label: '點擊倍率', value: 0.5 }],
     }
     let state = createInitialState()
     state = { ...state, gear: [a, b], equipped: {} }
-    // (1+0.5)×(1+0.5)=2.25 → sumAffix 等價倍率−1
-    expect(sumAffix(state, 'clickMult')).toBeCloseTo(1.25)
+    // (1+0.5)×(1+0.25)=1.875 → sumAffix 等價倍率−1
+    expect(sumAffix(state, 'clickMult')).toBeCloseTo(0.875)
+  })
+
+  it('each research node only buffs one affix type', () => {
+    for (const node of RESEARCH_TREE) {
+      const keys = (
+        ['clickMult', 'idleRate', 'minePower', 'offlineBonus'] as const
+      ).filter((id) => (node.effectPerLevel[id] ?? 0) > 0)
+      expect(keys).toHaveLength(1)
+    }
   })
 
   it('research levels, challenge and gear all multiply together', () => {
@@ -200,11 +211,11 @@ describe('side systems', () => {
         },
       ],
     }
-    // Π(1+per×1.1^k) for k=0..1 × (1+0.2) × (1+0.5)
+    // Π(1+per×GROWTH^k) for k=0..1 × (1+0.2) × (1+0.5)
     const expected = researchNodeMult(node, 2, 'clickMult') * 1.2 * 1.5
     expect(getAffixMult(state, 'clickMult')).toBeCloseTo(expected, 8)
     expect(researchNodeMult(node, 2, 'clickMult')).toBeCloseTo(
-      (1 + per) * (1 + per * 1.1),
+      (1 + per) * (1 + per * RESEARCH_LEVEL_GAIN_GROWTH),
       8,
     )
   })

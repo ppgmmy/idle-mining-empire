@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 import { sanitizeName, sanitizePlayerId } from './src/game/leaderboardCore'
 import {
-  listLeaderboard,
+  getLeaderboardView,
   submitLeaderboardEntry,
 } from './server/leaderboardFileStore'
 
@@ -21,13 +21,24 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body))
 }
 
+function playerIdFromUrl(url: string | undefined): string | null {
+  if (!url) return null
+  try {
+    const q = new URL(url, 'http://local').searchParams.get('playerId')
+    return sanitizePlayerId(String(q ?? ''))
+  } catch {
+    return null
+  }
+}
+
 async function handleLeaderboard(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
   if (req.method === 'GET') {
-    const rows = await listLeaderboard(50)
-    sendJson(res, 200, { rows })
+    const playerId = playerIdFromUrl(req.url)
+    const view = await getLeaderboardView(playerId)
+    sendJson(res, 200, view)
     return
   }
 
@@ -59,13 +70,13 @@ async function handleLeaderboard(
       return
     }
 
-    const rows = await submitLeaderboardEntry({
+    const view = await submitLeaderboardEntry({
       playerId,
       name,
       evolution,
       rebirth,
     })
-    sendJson(res, 200, { rows })
+    sendJson(res, 200, view)
     return
   }
 
