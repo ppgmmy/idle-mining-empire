@@ -8,7 +8,10 @@ import {
   canUpgradeRarity,
   bossCrystalReward,
   bossStardustReward,
+  BOSS_SPAWN_LOCK_MS,
+  canAdvanceStage,
   canEvolve,
+  canSpawnBoss,
   createBoss,
   createInitialState,
   DRILL_CLICK_GROWTH,
@@ -74,8 +77,8 @@ export function tick(state: GameState, dtSec: number): GameState {
   const idleRate = getIdleRatePerSec(state)
   const gained = idleRate.mul(dtSec)
   let next = grantOre(state, gained)
-  // 閒置同步削關卡礦石 HP，可自動通關
-  if (gained.gt(0)) {
+  // 閒置同步削關卡礦石 HP，可自動通關（打 Boss 時暫停）
+  if (gained.gt(0) && canAdvanceStage(next)) {
     next = applyStageDamage(next, gained)
   }
   // 有 Boss 時，閒置產量直接持續傷害 Boss
@@ -133,8 +136,9 @@ export function applyStageDamage(state: GameState, damage: ReturnType<typeof bn>
   return next
 }
 
-/** 升級左欄揼礦：照舊攞礦石，同時扣關卡 HP */
+/** 探險掘礦通關：攞礦石同時扣關卡 HP（打 Boss 時唔得） */
 export function strikeStage(state: GameState): GameState {
+  if (!canAdvanceStage(state)) return state
   let gain = getClickGain(state)
   const blast = blastStats(facilityLevel(state, 'blast'))
   let crit = false
@@ -344,12 +348,13 @@ export function doRebirth(state: GameState): GameState {
     totalOreEarned: bn(0),
     activeChallengeId: null,
     activeBoss: null,
+    bossSpawnLockUntil: 0,
     stage: 1,
     stageHp: stageMaxHp(1, nextCount),
   }
 }
 
-/** 進化：全重置（含轉生／研究／裝備／挑戰），進化次數 +1，累積加乘更新 */
+/** 進化：全重置（含轉生／研究／裝備／挑戰），保留晶體／星塵；進化次數 +1，累積加乘更新 */
 export function doEvolve(state: GameState): GameState {
   if (!canEvolve(state)) return state
   const nextEvo = (state.evolutionCount ?? 0) + 1
@@ -357,13 +362,15 @@ export function doEvolve(state: GameState): GameState {
   const fresh = createInitialState(Date.now())
   return {
     ...fresh,
+    crystals: state.crystals,
+    stardust: state.stardust,
     evolutionCount: nextEvo,
     evolutionPower: nextPower,
   }
 }
 
 export function describeEvolveNotice(state: GameState): string {
-  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生已歸零`
+  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生歸零 · 晶體／星塵已保留`
 }
 
 export function describeRebirthNotice(
@@ -496,7 +503,7 @@ function runAutomations(state: GameState): GameState {
 }
 
 export function spawnBoss(state: GameState): GameState {
-  if (state.activeBoss) return state
+  if (!canSpawnBoss(state)) return state
   const boss = createBoss(state)
   let next: GameState = { ...state, activeBoss: boss }
   next = pushFloater(next, `Boss 出現！${boss.name} Lv${boss.level}`)
@@ -525,6 +532,7 @@ export function applyBossDamage(
       bossKills: next.bossKills + 1,
       crystals: next.crystals.add(crystals),
       stardust: next.stardust.add(stardust),
+      bossSpawnLockUntil: Date.now() + BOSS_SPAWN_LOCK_MS,
     }
     const dustText = stardust.gt(0) ? ` · 星塵+${formatBN(stardust)}` : ''
     next = pushFloater(
@@ -564,6 +572,8 @@ export function tabLabel(tab: TabId): string {
       return '裝備'
     case 'rebirth':
       return '轉生'
+    case 'leaderboard':
+      return '排行'
   }
 }
 

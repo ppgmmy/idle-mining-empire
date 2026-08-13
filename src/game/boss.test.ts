@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { attackBoss, spawnBoss, tick } from './actions'
+import { attackBoss, spawnBoss, strikeStage, tick } from './actions'
 import { bn } from './bigNumber'
 import {
+  BOSS_SPAWN_LOCK_MS,
   bossCrystalReward,
   bossStardustReward,
+  canAdvanceStage,
+  canSpawnBoss,
   createInitialState,
   getBossDamage,
   getClickGain,
@@ -76,5 +79,30 @@ describe('boss encounter', () => {
     } else {
       expect(state.bossKills).toBe(1)
     }
+  })
+
+  it('boss fight blocks mining; kill allows mining but locks spawn 2s', () => {
+    let state = createInitialState()
+    state = { ...state, clickPower: bn(1e12), ore: bn(1e6), stage: 3 }
+    state = spawnBoss(state)
+    expect(canAdvanceStage(state)).toBe(false)
+    expect(canSpawnBoss(state)).toBe(false)
+    const stageBefore = state.stage
+    const afterStrike = strikeStage(state)
+    expect(afterStrike.stage).toBe(stageBefore)
+    expect(afterStrike.stageHp.eq(state.stageHp)).toBe(true)
+
+    state = attackBoss(state)
+    expect(state.activeBoss).toBeNull()
+    expect(canAdvanceStage(state)).toBe(true)
+    expect(canSpawnBoss(state)).toBe(false)
+    expect(state.bossSpawnLockUntil).toBeGreaterThan(Date.now())
+    expect(state.bossSpawnLockUntil).toBeLessThanOrEqual(
+      Date.now() + BOSS_SPAWN_LOCK_MS,
+    )
+    expect(spawnBoss(state).activeBoss).toBeNull()
+
+    state = { ...state, bossSpawnLockUntil: Date.now() - 1 }
+    expect(canSpawnBoss(state)).toBe(true)
   })
 })

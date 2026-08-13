@@ -738,6 +738,7 @@ export function createInitialState(now = Date.now()): GameState {
     activeChallengeId: null,
     bossKills: 0,
     activeBoss: null,
+    bossSpawnLockUntil: 0,
     craftLevel: 1,
     craftXp: 0,
     stage: 1,
@@ -919,8 +920,8 @@ export function clearedChallengeBonus(
 }
 
 /** 每次轉生：持有晶體／星塵收息，鼓勵儲蓄 */
-export const CRYSTAL_INTEREST_RATE = 0.12
-export const STARDUST_INTEREST_RATE = 0.1
+export const CRYSTAL_INTEREST_RATE = 0.05
+export const STARDUST_INTEREST_RATE = 0.03
 
 export function crystalInterestRate(state: GameState): number {
   return (
@@ -1003,6 +1004,20 @@ export function getBossDamage(state: GameState): BN {
   return getClickGain(state).add(getIdleRatePerSec(state))
 }
 
+/** 擊破 Boss 後，要等多耐先可以再召喚 */
+export const BOSS_SPAWN_LOCK_MS = 2000
+
+/** 打緊 Boss 時唔可以推進關卡（打完可即掘礦） */
+export function canAdvanceStage(state: GameState): boolean {
+  return !state.activeBoss
+}
+
+/** 無進行中 Boss，且召喚冷卻完 */
+export function canSpawnBoss(state: GameState, now = Date.now()): boolean {
+  if (state.activeBoss) return false
+  return now >= (state.bossSpawnLockUntil ?? 0)
+}
+
 export function getIdleRatePerSec(state: GameState): BN {
   const challenge = getActiveChallenge(state)
   if (challenge?.rule === 'clickOnly') return ZERO
@@ -1024,6 +1039,23 @@ export function getIdleRatePerSec(state: GameState): BN {
 
   if (challenge?.rule === 'halfIdle') rate = rate.mul(0.5)
   return rate
+}
+
+/** 再請一個礦工可加嘅閒置／秒 */
+export function nextMinerIdleGain(state: GameState): BN {
+  return getIdleRatePerSec({ ...state, miners: state.miners + 1 }).sub(
+    getIdleRatePerSec(state),
+  )
+}
+
+/** 再升一級鑽頭可加嘅每次點擊 */
+export function nextDrillClickGain(state: GameState): BN {
+  const after: GameState = {
+    ...state,
+    drillLevel: state.drillLevel + 1,
+    clickPower: state.clickPower.mul(DRILL_CLICK_GROWTH),
+  }
+  return getClickGain(after).sub(getClickGain(state))
 }
 
 export function gearCapacity(state: GameState): number {

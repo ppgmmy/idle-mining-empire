@@ -75,11 +75,11 @@ describe('progression', () => {
     const beforeCrystal = state.crystals
     const beforeDust = state.stardust
     state = doRebirth(state)
-    // 12% crystal + base gain; 10% stardust + 1 dust (from 4th rebirth)
-    expect(state.crystals.gte(beforeCrystal.add(beforeCrystal.mul(0.12).floor()))).toBe(
+    // 5% crystal + base gain; 3% stardust + 1 dust (from 4th rebirth)
+    expect(state.crystals.gte(beforeCrystal.add(beforeCrystal.mul(0.05).floor()))).toBe(
       true,
     )
-    expect(state.stardust.gte(beforeDust.add(beforeDust.mul(0.1).floor()).add(1))).toBe(
+    expect(state.stardust.gte(beforeDust.add(beforeDust.mul(0.03).floor()).add(1))).toBe(
       true,
     )
   })
@@ -140,6 +140,7 @@ describe('progression', () => {
       rebirthCount: EVOLUTION_UNLOCK_REBIRTH,
       rebirthMult: bn(10),
       crystals: bn(500),
+      stardust: bn(80),
       researchLevels: { 'pulse-click': 5 },
       gear: [
         {
@@ -158,7 +159,8 @@ describe('progression', () => {
     expect(state.evolutionPower.eq(bn(25).div(10_000))).toBe(true)
     expect(evolutionMult(state).eq(bn(1).add(bn(25).div(10_000)))).toBe(true)
     expect(state.rebirthCount).toBe(0)
-    expect(state.crystals.eq(0)).toBe(true)
+    expect(state.crystals.eq(500)).toBe(true)
+    expect(state.stardust.eq(80)).toBe(true)
     expect(state.gear.length).toBe(0)
 
     // 1→2：相乘（再 25 轉）

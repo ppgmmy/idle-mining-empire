@@ -1,6 +1,13 @@
 import type { BN } from './bigNumber'
 
-export const TABS = ['upgrade', 'research', 'gear', 'mine', 'rebirth'] as const
+export const TABS = [
+  'upgrade',
+  'research',
+  'gear',
+  'mine',
+  'rebirth',
+  'leaderboard',
+] as const
 export type TabId = (typeof TABS)[number]
 
 /** 分頁解鎖所需轉生次數 */
@@ -259,6 +266,8 @@ export type GameState = {
   /** 已擊殺 Boss 次數（難度遞增） */
   bossKills: number
   activeBoss: ActiveBoss | null
+  /** 擊破 Boss 後，此時間前唔可以再召喚 Boss */
+  bossSpawnLockUntil: number
   /** 打造等級（永久；轉生保留） */
   craftLevel: number
   /** 距離下一打造等級的進度次數 */

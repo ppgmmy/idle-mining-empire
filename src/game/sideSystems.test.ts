@@ -56,11 +56,11 @@ describe('side systems', () => {
       ],
     }
     expect(crystalInterestRate(state)).toBeCloseTo(
-      0.12 + (offer.reward.crystalInterest ?? 0),
+      0.05 + (offer.reward.crystalInterest ?? 0),
       5,
     )
     expect(stardustInterestRate(state)).toBeCloseTo(
-      0.1 + (offer.reward.stardustInterest ?? 0),
+      0.03 + (offer.reward.stardustInterest ?? 0),
       5,
     )
   })

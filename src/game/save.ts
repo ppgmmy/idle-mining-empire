@@ -173,6 +173,15 @@ function deserialize(raw: SerializedGameState): GameState {
     bossKills: raw.bossKills ?? 0,
     evolutionCount: Math.max(0, Number(raw.evolutionCount ?? 0) || 0),
     evolutionPower: parseBN(raw.evolutionPower, 0),
+    bossSpawnLockUntil: Math.max(
+      0,
+      Number(
+        (raw as { bossSpawnLockUntil?: number; stageLockUntil?: number })
+          .bossSpawnLockUntil ??
+          (raw as { stageLockUntil?: number }).stageLockUntil ??
+          0,
+      ) || 0,
+    ),
     activeBoss: raw.activeBoss
       ? {
           name: raw.activeBoss.name,

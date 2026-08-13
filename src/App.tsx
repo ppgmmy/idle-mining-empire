@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LeaderboardPanel } from './components/LeaderboardPanel'
 import { MineCanvas } from './components/MineCanvas'
 import { ResourceBar } from './components/ResourceBar'
 import { TabNav } from './components/TabNav'
@@ -23,11 +24,15 @@ import {
   formatAffixMult,
   formatResearchEffects,
   gearCapacity,
+  getActiveChallenge,
   getClickGain,
   bossCrystalReward,
   bossStardustReward,
+  canSpawnBoss,
   getBossDamage,
   getIdleRatePerSec,
+  nextDrillClickGain,
+  nextMinerIdleGain,
   isSlotPrimary,
   craftsNeededForNextLevel,
   craftRarityChances,
@@ -63,7 +68,7 @@ export default function App() {
   const game = useGame()
   const [pulse, setPulse] = useState(0)
   const [buyMult, setBuyMult] = useState<1 | 10 | 'max'>(1)
-  const [upgradeOpen, setUpgradeOpen] = useState({ base: true, facility: true })
+  const [upgradeSection, setUpgradeSection] = useState<'base' | 'facility'>('base')
   const [researchBranch, setResearchBranch] = useState<ResearchBranch>('active')
   const [oddsCraftLevel, setOddsCraftLevel] = useState<number | null>(null)
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
@@ -72,6 +77,13 @@ export default function App() {
   const previewCraftLevel = oddsCraftLevel ?? state.craftLevel
   const craftOdds = craftRarityChances(previewCraftLevel)
   const challengeOffers = listChallengeOffers(state)
+  const activeChallenge = getActiveChallenge(state)
+  const challengeProgress = activeChallenge
+    ? Math.max(
+        0,
+        Math.min(1, state.ore.div(bn(Math.max(1, activeChallenge.goalOre))).toNumber()),
+      )
+    : 0
   const selectedRecord =
     state.challengeRecords?.find((r) => r.id === challengeRecordId) ?? null
 
@@ -83,6 +95,29 @@ export default function App() {
     <div className="app-shell">
       <div className="top-zone">
         <ResourceBar state={state} />
+        {activeChallenge ? (
+          <div
+            className="challenge-progress"
+            role="status"
+            aria-label={`${activeChallenge.name} 進度`}
+          >
+            <div className="challenge-progress-head">
+              <span className="challenge-progress-name">
+                挑戰 · {activeChallenge.name}
+              </span>
+              <span className="challenge-progress-nums">
+                {formatBN(state.ore)} / {formatBN(bn(activeChallenge.goalOre))} ·{' '}
+                {Math.floor(challengeProgress * 100)}%
+              </span>
+            </div>
+            <div className="challenge-progress-track">
+              <div
+                className="challenge-progress-fill"
+                style={{ width: `${challengeProgress * 100}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
         {game.banner ? (
           <button
             type="button"
@@ -103,7 +138,34 @@ export default function App() {
       <main className="main-stage">
         {game.tab === 'mine' ? (
           <section className="panel mine-panel">
-            <div className="canvas-wrap">
+            <div
+              className="canvas-wrap canvas-wrap--tap"
+              role="button"
+              tabIndex={0}
+              aria-label={
+                state.activeBoss
+                  ? `攻擊 Boss，傷害 ${formatBN(getBossDamage(state))}`
+                  : `掘礦通關，+${formatBN(getClickGain(state))}`
+              }
+              onClick={() => {
+                if (state.activeBoss) {
+                  game.attackBoss()
+                } else {
+                  game.strikeStage()
+                }
+                setPulse((p) => p + 1)
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
+                if (state.activeBoss) {
+                  game.attackBoss()
+                } else {
+                  game.strikeStage()
+                }
+                setPulse((p) => p + 1)
+              }}
+            >
               <div className="viewport-frame" aria-hidden>
                 <span className="vf vf-tl" />
                 <span className="vf vf-tr" />
@@ -143,10 +205,12 @@ export default function App() {
                     </strong>
                     {state.activeBoss ? (
                       <span className="mine-sub">
-                        威脅等級 {state.activeBoss.level}
+                        威脅等級 {state.activeBoss.level} · 撳畫面攻擊
                       </span>
                     ) : (
-                      <span className="mine-sub">主角闖關專區 · 掘實體礦 · HP 歸零通關</span>
+                      <span className="mine-sub">
+                        撳畫面掘礦 · +{formatBN(getClickGain(state))} · HP 歸零通關
+                      </span>
                     )}
                   </div>
                   <div className="mine-live-chip">REC</div>
@@ -205,31 +269,27 @@ export default function App() {
               </div>
             </div>
 
-            <div className="explore-actions">
-              {state.activeBoss ? (
-                <button
-                  type="button"
-                  className="mine-btn boss-btn"
-                  onClick={() => {
-                    game.attackBoss()
-                    setPulse((p) => p + 1)
-                  }}
-                >
-                  <span className="mine-btn-label">攻擊 Boss</span>
-                  <span className="mine-btn-gain">
-                    -{formatBN(getBossDamage(state))} HP
-                  </span>
-                </button>
-              ) : (
+            {!state.activeBoss ? (
+              <div className="explore-actions">
                 <button
                   type="button"
                   className="secondary-btn spawn-boss-btn"
+                  disabled={!canSpawnBoss(state)}
                   onClick={() => {
                     game.spawnBoss()
                     setPulse((p) => p + 1)
                   }}
                 >
                   {(() => {
+                    if (!canSpawnBoss(state)) {
+                      const sec = Math.max(
+                        0,
+                        Math.ceil(
+                          ((state.bossSpawnLockUntil ?? 0) - Date.now()) / 1000,
+                        ),
+                      )
+                      return `召喚冷卻 ${sec}s`
+                    }
                     const lv = state.bossKills + 1
                     const dust = bossStardustReward(lv)
                     return `召喚 Boss #${lv} · 晶體+${formatBN(bossCrystalReward(lv))}${
@@ -237,23 +297,8 @@ export default function App() {
                     }`
                   })()}
                 </button>
-              )}
-              <button
-                type="button"
-                className={state.activeBoss ? 'secondary-btn harvest-btn' : 'mine-btn'}
-                onClick={() => {
-                  game.strikeStage()
-                  setPulse((p) => p + 1)
-                }}
-              >
-                <span className="mine-btn-label">
-                  {state.activeBoss ? '順便採礦' : '掘礦通關'}
-                </span>
-                <span className="mine-btn-gain">
-                  +{formatBN(getClickGain(state))}
-                </span>
-              </button>
-            </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -274,23 +319,30 @@ export default function App() {
               ))}
             </div>
 
-            <div className="upgrade-scroll">
-              <button
-                type="button"
-                className={
-                  upgradeOpen.base ? 'section-row on' : 'section-row'
-                }
-                aria-expanded={upgradeOpen.base}
-                onClick={() =>
-                  setUpgradeOpen((o) => ({ ...o, base: !o.base }))
-                }
-              >
-                <span>基礎產能</span>
-                <span className="section-row-mark" aria-hidden>
-                  {upgradeOpen.base ? '▾' : '▸'}
-                </span>
-              </button>
-              {upgradeOpen.base ? (
+            <div className="branch-tabs upgrade-tabs" role="tablist" aria-label="升級大項">
+              {(
+                [
+                  ['base', '基礎產能'],
+                  ['facility', '設施強化'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={upgradeSection === id}
+                  className={
+                    upgradeSection === id ? 'branch-tab on' : 'branch-tab'
+                  }
+                  onClick={() => setUpgradeSection(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="upgrade-scroll" role="tabpanel">
+              {upgradeSection === 'base' ? (
                 <div className="upgrade-list">
                   <button
                     type="button"
@@ -302,8 +354,13 @@ export default function App() {
                         : game.buyMinerTimes(buyMult === 10 ? 10 : Infinity)
                     }
                   >
-                    <span className="upgrade-chip-name">
-                      招募礦工 · {state.miners}
+                    <span className="upgrade-chip-main">
+                      <span className="upgrade-chip-name">
+                        招募礦工 · {state.miners}
+                      </span>
+                      <span className="upgrade-chip-blurb">
+                        +{formatBN(nextMinerIdleGain(state))}/s
+                      </span>
                     </span>
                     <span className="upgrade-chip-cost">
                       {buyMult === 1
@@ -323,8 +380,13 @@ export default function App() {
                         : game.buyDrillTimes(buyMult === 10 ? 10 : Infinity)
                     }
                   >
-                    <span className="upgrade-chip-name">
-                      強化鑽頭 · Lv{state.drillLevel}
+                    <span className="upgrade-chip-main">
+                      <span className="upgrade-chip-name">
+                        強化鑽頭 · Lv{state.drillLevel}
+                      </span>
+                      <span className="upgrade-chip-blurb">
+                        +{formatBN(nextDrillClickGain(state))}/tap
+                      </span>
                     </span>
                     <span className="upgrade-chip-cost">
                       {buyMult === 1
@@ -335,24 +397,7 @@ export default function App() {
                     </span>
                   </button>
                 </div>
-              ) : null}
-
-              <button
-                type="button"
-                className={
-                  upgradeOpen.facility ? 'section-row on' : 'section-row'
-                }
-                aria-expanded={upgradeOpen.facility}
-                onClick={() =>
-                  setUpgradeOpen((o) => ({ ...o, facility: !o.facility }))
-                }
-              >
-                <span>設施強化</span>
-                <span className="section-row-mark" aria-hidden>
-                  {upgradeOpen.facility ? '▾' : '▸'}
-                </span>
-              </button>
-              {upgradeOpen.facility ? (
+              ) : (
                 <div className="upgrade-list">
                   {FACILITIES.map((def) => {
                     const lv = facilityLevel(state, def.id)
@@ -394,13 +439,13 @@ export default function App() {
                     )
                   })}
                 </div>
-              ) : null}
+              )}
             </div>
           </section>
         ) : null}
 
         {game.tab === 'research' && isTabUnlocked('research', state.rebirthCount) ? (
-          <section className="panel">
+          <section className="panel research-panel">
             <h2>研究流派</h2>
             <p className="lede">
               四線無限升級 · 每級加幅×1.1 · 與升級／裝備互乘疊加
@@ -689,6 +734,13 @@ export default function App() {
           </section>
         ) : null}
 
+        {game.tab === 'leaderboard' ? (
+          <LeaderboardPanel
+            evolution={state.evolutionCount ?? 0}
+            rebirth={state.rebirthCount}
+          />
+        ) : null}
+
         {game.tab === 'rebirth' ? (
           <section className="panel">
             <h2>三重轉生</h2>
@@ -717,12 +769,12 @@ export default function App() {
               title={`進化 #${(state.evolutionCount ?? 0) + 1}`}
               desc={
                 canEvolve(state)
-                  ? `重置一切 · 轉生歸 0 · 片段 ${formatBN(evolutionSlice(state.rebirthCount))}（轉生÷10000）${
+                  ? `重置進度 · 保留晶體／星塵 · 轉生歸 0 · 片段 ${formatBN(evolutionSlice(state.rebirthCount))}（轉生÷10000）${
                       (state.evolutionCount ?? 0) <= 0 ? ' · 首次用加' : ' · 同現有相乘'
                     } · 進化後全局 ×${formatBN(
                       bn(1).add(nextEvolutionPower(state)),
                     )}`
-                  : `需 ${EVOLUTION_UNLOCK_REBIRTH} 轉（目前 ${state.rebirthCount}）· 片段＝轉生×1/10000；0→1 先加，之後互乘`
+                  : `需 ${EVOLUTION_UNLOCK_REBIRTH} 轉（目前 ${state.rebirthCount}）· 保留晶體／星塵 · 片段＝轉生×1/10000；0→1 先加，之後互乘`
               }
               cost={canEvolve(state) ? '進化' : `${EVOLUTION_UNLOCK_REBIRTH}轉後`}
               disabled={!canEvolve(state)}
@@ -737,6 +789,7 @@ export default function App() {
                 const unlocked = state.rebirthCount >= c.unlockRebirth
                 const canStart = canStartChallenge(state, c.id)
                 const active = state.activeChallengeId === c.id
+                const pct = active ? Math.floor(challengeProgress * 100) : 0
                 return (
                   <ActionCard
                     key={c.id}
@@ -744,11 +797,13 @@ export default function App() {
                     desc={
                       !unlocked
                         ? `未解鎖 · 需 ${c.unlockRebirth} 轉 · ${c.purpose}`
-                        : `${c.purpose} · ${c.desc} · 目標 ${formatBN(bn(c.goalOre))} 礦石 · 永久：${c.reward.label}`
+                        : active
+                          ? `${c.purpose} · 進度 ${formatBN(state.ore)} / ${formatBN(bn(c.goalOre))}（${pct}%）· 永久：${c.reward.label}`
+                          : `${c.purpose} · ${c.desc} · 目標 ${formatBN(bn(c.goalOre))} 礦石 · 永久：${c.reward.label}`
                     }
                     cost={
                       active
-                        ? '進行中'
+                        ? `${pct}%`
                         : !unlocked
                           ? `${c.unlockRebirth}轉後`
                           : '開始'

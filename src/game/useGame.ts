@@ -24,10 +24,13 @@ import {
   tick,
   toggleAutomation,
 } from './actions'
+import { submitLeaderboardScore } from './leaderboard'
 import { calcRebirthPayout, createInitialState } from './state'
 import { loadGame, saveGame } from './save'
 import type { FacilityId, GameState, TabId } from './types'
 import { isTabUnlocked, TICK_MS } from './types'
+
+const LEADERBOARD_SYNC_MS = 60_000
 
 export function useGame() {
   const [state, setState] = useState<GameState>(() => createInitialState())
@@ -37,6 +40,16 @@ export function useGame() {
   const [bannerLeaving, setBannerLeaving] = useState(false)
   const stateRef = useRef(state)
   stateRef.current = state
+
+  const syncLeaderboard = useEffectEvent(() => {
+    const s = stateRef.current
+    void submitLeaderboardScore({
+      evolution: s.evolutionCount ?? 0,
+      rebirth: s.rebirthCount,
+    }).catch(() => {
+      /* 本機未開 Vite API 時靜默跳過 */
+    })
+  })
 
   useEffect(() => {
     const loaded = loadGame()
@@ -50,6 +63,16 @@ export function useGame() {
     }
     setReady(true)
   }, [])
+
+  useEffect(() => {
+    if (!ready) return
+    const boot = window.setTimeout(() => syncLeaderboard(), 400)
+    const id = window.setInterval(() => syncLeaderboard(), LEADERBOARD_SYNC_MS)
+    return () => {
+      window.clearTimeout(boot)
+      window.clearInterval(id)
+    }
+  }, [ready, syncLeaderboard])
 
   useEffect(() => {
     if (!banner) return
@@ -79,6 +102,7 @@ export function useGame() {
       if (next.rebirthCount > before) {
         setBannerLeaving(false)
         setBanner(`自動${describeRebirthNotice(next, payout)}`)
+        queueMicrotask(() => syncLeaderboard())
       }
       return next
     })
@@ -154,6 +178,7 @@ export function useGame() {
         if (next.rebirthCount > before) {
           setBannerLeaving(false)
           setBanner(describeRebirthNotice(next, payout))
+          queueMicrotask(() => syncLeaderboard())
         }
         return next
       })
@@ -165,6 +190,7 @@ export function useGame() {
         if ((next.evolutionCount ?? 0) > before) {
           setBannerLeaving(false)
           setBanner(describeEvolveNotice(next))
+          queueMicrotask(() => syncLeaderboard())
         }
         return next
       })
