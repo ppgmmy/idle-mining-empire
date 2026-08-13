@@ -1,6 +1,12 @@
+import type { ReactNode } from 'react'
 import { formatBN } from '../game/bigNumber'
 import type { GameState } from '../game/types'
-import { crystalInterestRate, getIdleRatePerSec, stardustInterestRate } from '../game/state'
+import {
+  crystalInterestRate,
+  evolutionMult,
+  getIdleRatePerSec,
+  stardustInterestRate,
+} from '../game/state'
 
 type Props = { state: GameState }
 type ResourceKind = 'ore' | 'crystal' | 'stardust' | 'rebirth'
@@ -32,7 +38,17 @@ export function ResourceBar({ state }: Props) {
           kind="rebirth"
           label="轉生"
           value={String(state.rebirthCount)}
-          hint={`×${formatBN(state.rebirthMult)}`}
+          hint={
+            (state.evolutionCount ?? 0) > 0 ? (
+              <>
+                進化{state.evolutionCount}
+                <br />
+                ×{formatBN(evolutionMult(state))}
+              </>
+            ) : (
+              `×${formatBN(state.rebirthMult)}`
+            )
+          }
         />
       </div>
     </header>
@@ -48,7 +64,7 @@ function Resource({
   kind: ResourceKind
   label: string
   value: string
-  hint?: string
+  hint?: ReactNode
 }) {
   return (
     <div className={`resource-chip resource-chip--${kind}`}>

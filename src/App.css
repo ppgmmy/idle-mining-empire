@@ -35,6 +35,10 @@ body,
 
 body {
   min-height: 100dvh;
+  /* 遊戲感：唔好反白字、長按出「搜尋」 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 button,
@@ -688,34 +692,91 @@ input {
   letter-spacing: 0.04em;
 }
 
-.section-toggle {
+.section-row {
   width: 100%;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin: 10px 0 6px;
-  padding: 10px 12px;
+  gap: 12px;
+  margin: 8px 0 6px;
+  padding: 11px 14px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.86rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
   text-align: left;
 }
 
-.section-toggle.on {
-  border-color: rgba(240, 180, 41, 0.35);
-  background: rgba(240, 180, 41, 0.08);
+.section-row.on {
+  border-color: rgba(240, 180, 41, 0.4);
+  background: rgba(240, 180, 41, 0.1);
 }
 
-.section-toggle-chevron {
+.section-row-mark {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   line-height: 1;
+}
+
+.upgrade-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.upgrade-chip {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.upgrade-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.upgrade-chip-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.upgrade-chip-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.upgrade-chip-blurb {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.upgrade-chip-cost {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .buy-mult {
@@ -1081,11 +1142,8 @@ input {
   border-top: 1px dashed var(--line);
 }
 
-.challenge-log-head {
-  font-size: 0.72rem;
-  color: var(--muted);
-  margin-bottom: 6px;
-  letter-spacing: 0.02em;
+.challenge-log-body {
+  margin-top: 6px;
 }
 
 .challenge-log-list {

@@ -580,6 +580,8 @@ export type FacilityDef = {
   id: FacilityId
   name: string
   role: string
+  /** 升級頁超簡略解說 */
+  blurb: string
   baseCost: number
   costGrowth: number
   unlockHint: string
@@ -599,8 +601,9 @@ export const BLAST_MULT_PER_LEVEL = 0.18 * UPGRADE_GAIN_KEEP
 export const DRILL_CLICK_GROWTH = 1 + 0.08 * UPGRADE_GAIN_KEEP
 export const DRILL_CLICK_ADD = 0.35 * UPGRADE_GAIN_KEEP
 export const DRILL_IDLE_ADD = 0.25 * UPGRADE_GAIN_KEEP
-export const MINER_COST_GROWTH = 1 + 0.15 * UPGRADE_GAIN_KEEP
-export const DRILL_COST_GROWTH = 1 + 0.22 * UPGRADE_GAIN_KEEP
+/** 成本成長唔跟增益削弱；每級約 +12% / +16% 升下一級 */
+export const MINER_COST_GROWTH = 1.12
+export const DRILL_COST_GROWTH = 1.16
 
 function scaleCostGrowth(raw: number): number {
   return 1 + (raw - 1) * UPGRADE_GAIN_KEEP
@@ -611,6 +614,7 @@ export const FACILITIES: FacilityDef[] = [
     id: 'pulse',
     name: '脈衝擊錘',
     role: '手動',
+    blurb: '點擊↑',
     baseCost: 400,
     costGrowth: scaleCostGrowth(1.62),
     unlockHint: '',
@@ -624,6 +628,7 @@ export const FACILITIES: FacilityDef[] = [
     id: 'conveyor',
     name: '運輸軌道',
     role: '掛機',
+    blurb: '閒置↑',
     baseCost: 900,
     costGrowth: scaleCostGrowth(1.68),
     unlockHint: '需 3 名礦工',
@@ -637,6 +642,7 @@ export const FACILITIES: FacilityDef[] = [
     id: 'blast',
     name: '爆破裝藥',
     role: '暴擊',
+    blurb: '暴擊',
     baseCost: 6500,
     costGrowth: scaleCostGrowth(1.95),
     unlockHint: '需鑽頭 Lv2',
@@ -651,6 +657,7 @@ export const FACILITIES: FacilityDef[] = [
     id: 'foreman',
     name: '工頭編制',
     role: '編制',
+    blurb: '礦工效↑',
     baseCost: 2800,
     costGrowth: scaleCostGrowth(1.78),
     unlockHint: '需 8 名礦工',
@@ -696,6 +703,8 @@ export function createInitialState(now = Date.now()): GameState {
     facilities: emptyFacilities(),
     rebirthCount: 0,
     rebirthMult: ONE,
+    evolutionCount: 0,
+    evolutionPower: ZERO,
     automationLines: 0,
     macrosUnlocked: false,
     researchLevels: {},
@@ -779,6 +788,20 @@ const BOSS_NAMES = [
 
 export function nextBossLevel(state: GameState): number {
   return state.bossKills + 1
+}
+
+/** 擊破 Boss：每關晶體；關卡愈後愈豐富 */
+export function bossCrystalReward(level: number): BN {
+  const lv = Math.max(1, Math.floor(level))
+  return bn(Math.max(1, Math.floor(2 * Math.pow(lv, 1.35) + lv * 2)))
+}
+
+/** 擊破 Boss：每 5／10／15… 關星塵；關卡愈後愈豐富 */
+export function bossStardustReward(level: number): BN {
+  const lv = Math.max(1, Math.floor(level))
+  if (lv % 5 !== 0) return ZERO
+  const tier = lv / 5
+  return bn(Math.max(1, Math.floor(1 + tier * 2.2 + Math.pow(tier, 1.45))))
 }
 
 export function bossMaxHp(state: GameState, level: number): BN {
@@ -900,11 +923,17 @@ export const CRYSTAL_INTEREST_RATE = 0.12
 export const STARDUST_INTEREST_RATE = 0.1
 
 export function crystalInterestRate(state: GameState): number {
-  return CRYSTAL_INTEREST_RATE + clearedChallengeBonus(state, 'crystalInterest')
+  return (
+    (CRYSTAL_INTEREST_RATE + clearedChallengeBonus(state, 'crystalInterest')) *
+    evolutionMultNumber(state)
+  )
 }
 
 export function stardustInterestRate(state: GameState): number {
-  return STARDUST_INTEREST_RATE + clearedChallengeBonus(state, 'stardustInterest')
+  return (
+    (STARDUST_INTEREST_RATE + clearedChallengeBonus(state, 'stardustInterest')) *
+    evolutionMultNumber(state)
+  )
 }
 
 export function effectiveAutomationLines(state: GameState): number {
@@ -958,6 +987,7 @@ export function getClickGain(state: GameState): BN {
   const pulseLv = facilityLevel(state, 'pulse')
   let gain = state.clickPower
     .mul(state.rebirthMult)
+    .mul(evolutionMult(state))
     .mul(getAffixMult(state, 'clickMult'))
     .mul(getAffixMult(state, 'minePower'))
     .mul(bn(3).mul(bn(1 + DRILL_CLICK_ADD).pow(state.drillLevel)))
@@ -986,6 +1016,7 @@ export function getIdleRatePerSec(state: GameState): BN {
     .mul(bn(0.5).mul(bn(1 + DRILL_IDLE_ADD).pow(state.drillLevel)))
     .mul(minerEff)
     .mul(state.rebirthMult)
+    .mul(evolutionMult(state))
     .mul(getAffixMult(state, 'idleRate'))
     .mul(getAffixMult(state, 'minePower'))
     .mul(bn(CONVEYOR_PER_LEVEL).pow(conveyorLv))
@@ -1013,6 +1044,41 @@ export function rebirthRequirement(state: GameState): BN {
   return bn(1000 * Math.pow(1.8, state.rebirthCount))
 }
 
+/** 需轉生達標先可進化；重置一切換全局倍率 */
+export const EVOLUTION_UNLOCK_REBIRTH = 25
+
+/** 今次進化用嘅片段：轉生次數 × 1/10000 */
+export function evolutionSlice(rebirthCount: number): BN {
+  return bn(Math.max(0, rebirthCount)).div(10_000)
+}
+
+/**
+ * 下一次進化後嘅累積值：
+ * 0→1：0 + slice（加數，避免 0 乘）
+ * 之後：prev × slice
+ */
+export function nextEvolutionPower(state: GameState): BN {
+  const slice = evolutionSlice(state.rebirthCount)
+  const prev = state.evolutionPower ?? ZERO
+  if ((state.evolutionCount ?? 0) <= 0) return prev.add(slice)
+  return prev.mul(slice)
+}
+
+/**
+ * 套用到產量／獎勵：1 + 累積值（未進化＝×1）
+ */
+export function evolutionMult(state: GameState): BN {
+  return ONE.add(state.evolutionPower ?? ZERO)
+}
+
+export function evolutionMultNumber(state: GameState): number {
+  return evolutionMult(state).toNumber()
+}
+
+export function canEvolve(state: GameState): boolean {
+  return state.rebirthCount >= EVOLUTION_UNLOCK_REBIRTH
+}
+
 export type RebirthPayout = {
   crystalsGain: BN
   stardustGain: BN
@@ -1022,10 +1088,11 @@ export type RebirthPayout = {
 
 export function calcRebirthPayout(state: GameState): RebirthPayout {
   const nextCount = state.rebirthCount + 1
+  const evo = evolutionMult(state)
   const crystalsGain = bn(
     Math.max(1, Math.floor(Math.log10(state.totalOreEarned.toNumber() + 10))),
-  )
-  const stardustGain = nextCount >= 3 ? bn(1) : ZERO
+  ).mul(evo)
+  const stardustGain = (nextCount >= 3 ? bn(1) : ZERO).mul(evo)
   const crystalInterest = state.crystals.mul(crystalInterestRate(state)).floor()
   const stardustInterest = state.stardust.mul(stardustInterestRate(state)).floor()
   return { crystalsGain, stardustGain, crystalInterest, stardustInterest }

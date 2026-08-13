@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { attackBoss, spawnBoss, tick } from './actions'
 import { bn } from './bigNumber'
-import { createInitialState, getBossDamage, getClickGain, getIdleRatePerSec } from './state'
+import {
+  bossCrystalReward,
+  bossStardustReward,
+  createInitialState,
+  getBossDamage,
+  getClickGain,
+  getIdleRatePerSec,
+} from './state'
 
 describe('boss encounter', () => {
   it('spawn then attack until defeat grants crystals and kill count', () => {
@@ -13,10 +20,36 @@ describe('boss encounter', () => {
 
     state = { ...state, clickPower: state.activeBoss!.maxHp }
     const beforeCrystals = state.crystals
+    const beforeDust = state.stardust
     state = attackBoss(state)
     expect(state.activeBoss).toBeNull()
     expect(state.bossKills).toBe(1)
-    expect(state.crystals.gt(beforeCrystals)).toBe(true)
+    expect(state.crystals.eq(beforeCrystals.add(bossCrystalReward(1)))).toBe(true)
+    expect(state.stardust.eq(beforeDust)).toBe(true)
+  })
+
+  it('boss rewards: crystals every kill, stardust every 5, scaling up', () => {
+    expect(bossStardustReward(1).eq(0)).toBe(true)
+    expect(bossStardustReward(4).eq(0)).toBe(true)
+    expect(bossStardustReward(5).gt(0)).toBe(true)
+    expect(bossStardustReward(10).gt(bossStardustReward(5))).toBe(true)
+    expect(bossCrystalReward(10).gt(bossCrystalReward(1))).toBe(true)
+
+    let state = createInitialState()
+    state = {
+      ...state,
+      bossKills: 4,
+      clickPower: bn(1e12),
+      ore: bn(1e6),
+    }
+    state = spawnBoss(state)
+    expect(state.activeBoss!.level).toBe(5)
+    const beforeC = state.crystals
+    const beforeD = state.stardust
+    state = attackBoss(state)
+    expect(state.bossKills).toBe(5)
+    expect(state.crystals.eq(beforeC.add(bossCrystalReward(5)))).toBe(true)
+    expect(state.stardust.eq(beforeD.add(bossStardustReward(5)))).toBe(true)
   })
 
   it('attack damage equals click gain plus idle rate', () => {

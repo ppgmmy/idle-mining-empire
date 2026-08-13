@@ -27,6 +27,7 @@ function serialize(state: GameState): SerializedGameState {
     minerCost: serializeBN(state.minerCost),
     drillCost: serializeBN(state.drillCost),
     rebirthMult: serializeBN(state.rebirthMult),
+    evolutionPower: serializeBN(state.evolutionPower ?? bn(0)),
     totalOreEarned: serializeBN(state.totalOreEarned),
     stageHp: serializeBN(state.stageHp),
     activeBoss: state.activeBoss
@@ -170,6 +171,8 @@ function deserialize(raw: SerializedGameState): GameState {
     challengeRecords,
     automations: migrateAutomations(raw.automations, base.automations),
     bossKills: raw.bossKills ?? 0,
+    evolutionCount: Math.max(0, Number(raw.evolutionCount ?? 0) || 0),
+    evolutionPower: parseBN(raw.evolutionPower, 0),
     activeBoss: raw.activeBoss
       ? {
           name: raw.activeBoss.name,

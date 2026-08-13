@@ -10,7 +10,9 @@ import {
   buyMinerTimes,
   buyResearch,
   craftGear,
+  describeEvolveNotice,
   describeRebirthNotice,
+  doEvolve,
   doRebirth,
   dropGear,
   equipGear,
@@ -152,6 +154,17 @@ export function useGame() {
         if (next.rebirthCount > before) {
           setBannerLeaving(false)
           setBanner(describeRebirthNotice(next, payout))
+        }
+        return next
+      })
+    },
+    evolve: () => {
+      setState((s) => {
+        const before = s.evolutionCount ?? 0
+        const next = doEvolve(s)
+        if ((next.evolutionCount ?? 0) > before) {
+          setBannerLeaving(false)
+          setBanner(describeEvolveNotice(next))
         }
         return next
       })

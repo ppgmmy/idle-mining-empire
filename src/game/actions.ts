@@ -6,10 +6,16 @@ import {
   canRebirth,
   canStartChallenge,
   canUpgradeRarity,
+  bossCrystalReward,
+  bossStardustReward,
+  canEvolve,
   createBoss,
+  createInitialState,
   DRILL_CLICK_GROWTH,
   DRILL_COST_GROWTH,
   emptyFacilities,
+  evolutionMult,
+  nextEvolutionPower,
   facilityCost,
   facilityLevel,
   FACILITIES,
@@ -343,6 +349,23 @@ export function doRebirth(state: GameState): GameState {
   }
 }
 
+/** 進化：全重置（含轉生／研究／裝備／挑戰），進化次數 +1，累積加乘更新 */
+export function doEvolve(state: GameState): GameState {
+  if (!canEvolve(state)) return state
+  const nextEvo = (state.evolutionCount ?? 0) + 1
+  const nextPower = nextEvolutionPower(state)
+  const fresh = createInitialState(Date.now())
+  return {
+    ...fresh,
+    evolutionCount: nextEvo,
+    evolutionPower: nextPower,
+  }
+}
+
+export function describeEvolveNotice(state: GameState): string {
+  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生已歸零`
+}
+
 export function describeRebirthNotice(
   state: GameState,
   payout?: RebirthPayout,
@@ -414,8 +437,12 @@ function maybeClearChallenge(state: GameState): GameState {
     activeChallengeId: null,
     challengeCleared: cleared,
     challengeRecords: [record, ...(state.challengeRecords ?? [])],
-    crystals: state.crystals.add(reward?.crystals ?? 0),
-    stardust: state.stardust.add(reward?.stardust ?? 0),
+    crystals: state.crystals.add(
+      bn(reward?.crystals ?? 0).mul(evolutionMult(state)),
+    ),
+    stardust: state.stardust.add(
+      bn(reward?.stardust ?? 0).mul(evolutionMult(state)),
+    ),
   }
   // automationLines from reward is permanent via clearedChallengeBonus; also bump base if granted
   if (reward?.automationLines) {
@@ -489,8 +516,9 @@ export function applyBossDamage(
   let next = oreFromHit ? grantOre(state, dmg.mul(0.25)) : state
 
   if (hpLeft.lte(0)) {
-    const crystals = bn(1 + Math.floor(boss.level / 2))
-    const stardust = boss.level >= 3 && boss.level % 2 === 1 ? bn(1) : bn(0)
+    const evo = evolutionMult(next)
+    const crystals = bossCrystalReward(boss.level).mul(evo)
+    const stardust = bossStardustReward(boss.level).mul(evo)
     next = {
       ...next,
       activeBoss: null,

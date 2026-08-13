@@ -3,6 +3,7 @@ import {
   buyFacility,
   buyMiner,
   buyMinerTimes,
+  doEvolve,
   doRebirth,
   mineClick,
   applyOfflineGains,
@@ -11,8 +12,11 @@ import {
 } from './actions'
 import { bn } from './bigNumber'
 import {
+  canEvolve,
   canRebirth,
   createInitialState,
+  EVOLUTION_UNLOCK_REBIRTH,
+  evolutionMult,
   facilityLevel,
   getClickGain,
   getIdleRatePerSec,
@@ -33,7 +37,7 @@ describe('progression', () => {
     state = { ...state, ore: bn(1000) }
     const before = getIdleRatePerSec(state)
     state = buyMiner(state)
-    expect(state.miners).toBe(1)
+    expect(state.miners).toBe(2)
     expect(getIdleRatePerSec(state).gt(before)).toBe(true)
   })
 
@@ -41,7 +45,7 @@ describe('progression', () => {
     let state = createInitialState()
     state = { ...state, ore: bn(1e9) }
     state = buyMinerTimes(state, 10)
-    expect(state.miners).toBe(10)
+    expect(state.miners).toBe(11)
 
     const clickBefore = getClickGain(state)
     state = buyFacility(state, 'pulse')
@@ -126,6 +130,47 @@ describe('progression', () => {
     const result = applyOfflineGains(state, now)
     expect(result.gainedSeconds).toBeGreaterThan(50)
     expect(bn(result.gainedOre).gt(0)).toBe(true)
+  })
+
+  it('evolve adds then multiplies power from rebirth/10000', () => {
+    expect(canEvolve(createInitialState())).toBe(false)
+    let state = createInitialState()
+    state = {
+      ...state,
+      rebirthCount: EVOLUTION_UNLOCK_REBIRTH,
+      rebirthMult: bn(10),
+      crystals: bn(500),
+      researchLevels: { 'pulse-click': 5 },
+      gear: [
+        {
+          id: 'g1',
+          name: 't',
+          slot: 'pick',
+          rarity: 'common',
+          affixes: [{ id: 'clickMult', label: '點擊', value: 0.1 }],
+        },
+      ],
+    }
+    expect(canEvolve(state)).toBe(true)
+    // 0→1：加 25/10000
+    state = doEvolve(state)
+    expect(state.evolutionCount).toBe(1)
+    expect(state.evolutionPower.eq(bn(25).div(10_000))).toBe(true)
+    expect(evolutionMult(state).eq(bn(1).add(bn(25).div(10_000)))).toBe(true)
+    expect(state.rebirthCount).toBe(0)
+    expect(state.crystals.eq(0)).toBe(true)
+    expect(state.gear.length).toBe(0)
+
+    // 1→2：相乘（再 25 轉）
+    state = { ...state, rebirthCount: EVOLUTION_UNLOCK_REBIRTH }
+    const prevPower = state.evolutionPower
+    state = doEvolve(state)
+    expect(state.evolutionCount).toBe(2)
+    expect(state.evolutionPower.eq(prevPower.mul(bn(25).div(10_000)))).toBe(true)
+    const noEvo = { ...state, evolutionCount: 0, evolutionPower: bn(0) }
+    expect(getClickGain(state).eq(getClickGain(noEvo).mul(evolutionMult(state)))).toBe(
+      true,
+    )
   })
 
   it('auto-rebirth triggers on tick when enabled and canRebirth', () => {

@@ -240,6 +240,10 @@ export type GameState = {
   facilities: Record<FacilityId, number>
   rebirthCount: number
   rebirthMult: BN
+  /** 進化次數；永久保留 */
+  evolutionCount: number
+  /** 進化累積加乘值（0→1 用加，之後互乘） */
+  evolutionPower: BN
   automationLines: number
   macrosUnlocked: boolean
   /** 各研究目前等級；無限級 */
@@ -279,6 +283,7 @@ export type SerializedGameState = Omit<
   | 'minerCost'
   | 'drillCost'
   | 'rebirthMult'
+  | 'evolutionPower'
   | 'totalOreEarned'
   | 'activeBoss'
   | 'stageHp'
@@ -290,6 +295,7 @@ export type SerializedGameState = Omit<
   minerCost: string
   drillCost: string
   rebirthMult: string
+  evolutionPower?: string
   totalOreEarned: string
   stageHp?: string
   activeBoss: null | {

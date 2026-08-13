@@ -8,9 +8,14 @@ import {
   affixCount,
   calcRebirthPayout,
   canCraftGear,
+  canEvolve,
   canRebirth,
   canStartChallenge,
   crystalInterestRate,
+  EVOLUTION_UNLOCK_REBIRTH,
+  evolutionMult,
+  evolutionSlice,
+  nextEvolutionPower,
   describeAffixRanges,
   FACILITIES,
   facilityCost,
@@ -19,6 +24,8 @@ import {
   formatResearchEffects,
   gearCapacity,
   getClickGain,
+  bossCrystalReward,
+  bossStardustReward,
   getBossDamage,
   getIdleRatePerSec,
   isSlotPrimary,
@@ -60,6 +67,7 @@ export default function App() {
   const [researchBranch, setResearchBranch] = useState<ResearchBranch>('active')
   const [oddsCraftLevel, setOddsCraftLevel] = useState<number | null>(null)
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
+  const [challengeLogOpen, setChallengeLogOpen] = useState(false)
   const { state } = game
   const previewCraftLevel = oddsCraftLevel ?? state.craftLevel
   const craftOdds = craftRarityChances(previewCraftLevel)
@@ -221,7 +229,13 @@ export default function App() {
                     setPulse((p) => p + 1)
                   }}
                 >
-                  開啟裂隙 · 召喚 Boss #{state.bossKills + 1}
+                  {(() => {
+                    const lv = state.bossKills + 1
+                    const dust = bossStardustReward(lv)
+                    return `召喚 Boss #${lv} · 晶體+${formatBN(bossCrystalReward(lv))}${
+                      dust.gt(0) ? ` · 星塵+${formatBN(dust)}` : ''
+                    }`
+                  })()}
                 </button>
               )}
               <button
@@ -264,7 +278,7 @@ export default function App() {
               <button
                 type="button"
                 className={
-                  upgradeOpen.base ? 'section-toggle on' : 'section-toggle'
+                  upgradeOpen.base ? 'section-row on' : 'section-row'
                 }
                 aria-expanded={upgradeOpen.base}
                 onClick={() =>
@@ -272,57 +286,61 @@ export default function App() {
                 }
               >
                 <span>基礎產能</span>
-                <span className="section-toggle-chevron" aria-hidden>
+                <span className="section-row-mark" aria-hidden>
                   {upgradeOpen.base ? '▾' : '▸'}
                 </span>
               </button>
               {upgradeOpen.base ? (
-                <div className="stack">
-                  <ActionCard
-                    compact
-                    title={`招募礦工 · ${state.miners} 人`}
-                    desc=""
-                    cost={
-                      buyMult === 1
-                        ? formatBN(state.minerCost)
-                        : buyMult === 10
-                          ? `×10 · 起 ${formatBN(state.minerCost)}`
-                          : `Max · 起 ${formatBN(state.minerCost)}`
-                    }
+                <div className="upgrade-list">
+                  <button
+                    type="button"
+                    className="upgrade-chip"
                     disabled={state.ore.lt(state.minerCost)}
                     onClick={() =>
                       buyMult === 1
                         ? game.buyMiner()
                         : game.buyMinerTimes(buyMult === 10 ? 10 : Infinity)
                     }
-                  />
-                  <ActionCard
-                    compact
-                    title={`強化鑽頭 · Lv${state.drillLevel}`}
-                    desc=""
-                    cost={
-                      buyMult === 1
-                        ? formatBN(state.drillCost)
+                  >
+                    <span className="upgrade-chip-name">
+                      招募礦工 · {state.miners}
+                    </span>
+                    <span className="upgrade-chip-cost">
+                      {buyMult === 1
+                        ? formatBN(state.minerCost)
                         : buyMult === 10
-                          ? `×10 · 起 ${formatBN(state.drillCost)}`
-                          : `Max · 起 ${formatBN(state.drillCost)}`
-                    }
+                          ? `×10 ${formatBN(state.minerCost)}`
+                          : `Max ${formatBN(state.minerCost)}`}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="upgrade-chip"
                     disabled={state.ore.lt(state.drillCost)}
                     onClick={() =>
                       buyMult === 1
                         ? game.buyDrill()
                         : game.buyDrillTimes(buyMult === 10 ? 10 : Infinity)
                     }
-                  />
+                  >
+                    <span className="upgrade-chip-name">
+                      強化鑽頭 · Lv{state.drillLevel}
+                    </span>
+                    <span className="upgrade-chip-cost">
+                      {buyMult === 1
+                        ? formatBN(state.drillCost)
+                        : buyMult === 10
+                          ? `×10 ${formatBN(state.drillCost)}`
+                          : `Max ${formatBN(state.drillCost)}`}
+                    </span>
+                  </button>
                 </div>
               ) : null}
 
               <button
                 type="button"
                 className={
-                  upgradeOpen.facility
-                    ? 'section-toggle on'
-                    : 'section-toggle'
+                  upgradeOpen.facility ? 'section-row on' : 'section-row'
                 }
                 aria-expanded={upgradeOpen.facility}
                 onClick={() =>
@@ -330,12 +348,12 @@ export default function App() {
                 }
               >
                 <span>設施強化</span>
-                <span className="section-toggle-chevron" aria-hidden>
+                <span className="section-row-mark" aria-hidden>
                   {upgradeOpen.facility ? '▾' : '▸'}
                 </span>
               </button>
               {upgradeOpen.facility ? (
-                <div className="stack">
+                <div className="upgrade-list">
                   {FACILITIES.map((def) => {
                     const lv = facilityLevel(state, def.id)
                     const unlocked = def.unlocked(state)
@@ -345,20 +363,15 @@ export default function App() {
                       : buyMult === 1
                         ? formatBN(cost)
                         : buyMult === 10
-                          ? `×10 · 起 ${formatBN(cost)}`
-                          : `Max · 起 ${formatBN(cost)}`
+                          ? `×10 ${formatBN(cost)}`
+                          : `Max ${formatBN(cost)}`
                     return (
-                      <ActionCard
+                      <button
                         key={def.id}
-                        compact
-                        title={
-                          unlocked
-                            ? `${def.name} · Lv${lv}`
-                            : `${def.name} · ${def.unlockHint || '未解鎖'}`
-                        }
-                        desc=""
-                        cost={costLabel}
+                        type="button"
+                        className="upgrade-chip"
                         disabled={!unlocked || state.ore.lt(cost)}
+                        title={unlocked ? def.effectLine(lv) : def.unlockHint}
                         onClick={() =>
                           buyMult === 1
                             ? game.buyFacility(def.id)
@@ -367,7 +380,17 @@ export default function App() {
                                 buyMult === 10 ? 10 : Infinity,
                               )
                         }
-                      />
+                      >
+                        <span className="upgrade-chip-main">
+                          <span className="upgrade-chip-name">
+                            {def.name} · Lv{lv}
+                          </span>
+                          <span className="upgrade-chip-blurb">
+                            {unlocked ? def.blurb : def.unlockHint || '未解鎖'}
+                          </span>
+                        </span>
+                        <span className="upgrade-chip-cost">{costLabel}</span>
+                      </button>
                     )
                   })}
                 </div>
@@ -670,9 +693,13 @@ export default function App() {
           <section className="panel">
             <h2>三重轉生</h2>
             <p className="lede">
-              10 轉解鎖研究 · 20 轉解鎖裝備 · 現息率 晶體{' '}
+              10 轉解鎖研究 · 20 轉解鎖裝備 · {EVOLUTION_UNLOCK_REBIRTH}{' '}
+              轉可進化 · 現息率 晶體{' '}
               {Math.round(crystalInterestRate(state) * 100)}%／轉 · 星塵{' '}
-              {Math.round(stardustInterestRate(state) * 100)}%／轉 · 挑戰可永久強化息率同產線
+              {Math.round(stardustInterestRate(state) * 100)}%／轉
+              {(state.evolutionCount ?? 0) > 0
+                ? ` · 進化${state.evolutionCount} 全局×${formatBN(evolutionMult(state))}`
+                : ''}
             </p>
             {(() => {
               const payout = calcRebirthPayout(state)
@@ -686,10 +713,25 @@ export default function App() {
                 />
               )
             })()}
+            <ActionCard
+              title={`進化 #${(state.evolutionCount ?? 0) + 1}`}
+              desc={
+                canEvolve(state)
+                  ? `重置一切 · 轉生歸 0 · 片段 ${formatBN(evolutionSlice(state.rebirthCount))}（轉生÷10000）${
+                      (state.evolutionCount ?? 0) <= 0 ? ' · 首次用加' : ' · 同現有相乘'
+                    } · 進化後全局 ×${formatBN(
+                      bn(1).add(nextEvolutionPower(state)),
+                    )}`
+                  : `需 ${EVOLUTION_UNLOCK_REBIRTH} 轉（目前 ${state.rebirthCount}）· 片段＝轉生×1/10000；0→1 先加，之後互乘`
+              }
+              cost={canEvolve(state) ? '進化' : `${EVOLUTION_UNLOCK_REBIRTH}轉後`}
+              disabled={!canEvolve(state)}
+              onClick={game.evolve}
+            />
             <div className="stack muted-block">
               <h3>限制挑戰</h3>
               <p className="hint">
-                三線無限級 · 目標每級×3 · 通關永久獎勵入帳 · 紀錄可點入詳情
+                三線無限級 · 目標每級×3 · 通關永久獎勵入帳 · 紀錄撳入先睇
               </p>
               {challengeOffers.map((c) => {
                 const unlocked = state.rebirthCount >= c.unlockRebirth
@@ -718,52 +760,79 @@ export default function App() {
               })}
 
               <div className="challenge-log">
-                <div className="challenge-log-head">通關紀錄（{(state.challengeRecords ?? []).length}）</div>
-                {(state.challengeRecords ?? []).length === 0 ? (
-                  <p className="hint">尚未有紀錄。</p>
-                ) : (
-                  <ul className="challenge-log-list">
-                    {(state.challengeRecords ?? []).map((r) => (
-                      <li key={r.id}>
-                        <button
-                          type="button"
-                          className={
-                            challengeRecordId === r.id
-                              ? 'challenge-log-item on'
-                              : 'challenge-log-item'
-                          }
-                          onClick={() =>
-                            setChallengeRecordId((id) => (id === r.id ? null : r.id))
-                          }
-                        >
-                          <span>
-                            {r.name} · 目標 {formatBN(bn(r.goalOre))}
-                          </span>
-                          <span className="challenge-log-reward">{r.reward.label}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {selectedRecord ? (
-                  <div className="challenge-log-detail">
-                    <strong>{selectedRecord.name}</strong>
-                    <p>
-                      {
-                        {
-                          clickOnly: '點擊試煉',
-                          noAutomation: '停機挑戰',
-                          halfIdle: '半速軌道',
-                        }[selectedRecord.rule]
-                      }{' '}
-                      · Lv{selectedRecord.level} · 目標礦石{' '}
-                      {formatBN(bn(selectedRecord.goalOre))}
-                    </p>
-                    <p>永久獎勵：{selectedRecord.reward.label}</p>
-                    <p className="hint">
-                      入帳時間{' '}
-                      {new Date(selectedRecord.clearedAt).toLocaleString()}
-                    </p>
+                <button
+                  type="button"
+                  className={
+                    challengeLogOpen ? 'section-row on' : 'section-row'
+                  }
+                  aria-expanded={challengeLogOpen}
+                  onClick={() =>
+                    setChallengeLogOpen((open) => {
+                      if (open) setChallengeRecordId(null)
+                      return !open
+                    })
+                  }
+                >
+                  <span>
+                    通關紀錄（{(state.challengeRecords ?? []).length}）
+                  </span>
+                  <span className="section-row-mark" aria-hidden>
+                    {challengeLogOpen ? '▾' : '▸'}
+                  </span>
+                </button>
+                {challengeLogOpen ? (
+                  <div className="challenge-log-body">
+                    {(state.challengeRecords ?? []).length === 0 ? (
+                      <p className="hint">尚未有紀錄。</p>
+                    ) : (
+                      <ul className="challenge-log-list">
+                        {(state.challengeRecords ?? []).map((r) => (
+                          <li key={r.id}>
+                            <button
+                              type="button"
+                              className={
+                                challengeRecordId === r.id
+                                  ? 'challenge-log-item on'
+                                  : 'challenge-log-item'
+                              }
+                              onClick={() =>
+                                setChallengeRecordId((id) =>
+                                  id === r.id ? null : r.id,
+                                )
+                              }
+                            >
+                              <span>
+                                {r.name} · 目標 {formatBN(bn(r.goalOre))}
+                              </span>
+                              <span className="challenge-log-reward">
+                                {r.reward.label}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {selectedRecord ? (
+                      <div className="challenge-log-detail">
+                        <strong>{selectedRecord.name}</strong>
+                        <p>
+                          {
+                            {
+                              clickOnly: '點擊試煉',
+                              noAutomation: '停機挑戰',
+                              halfIdle: '半速軌道',
+                            }[selectedRecord.rule]
+                          }{' '}
+                          · Lv{selectedRecord.level} · 目標礦石{' '}
+                          {formatBN(bn(selectedRecord.goalOre))}
+                        </p>
+                        <p>永久獎勵：{selectedRecord.reward.label}</p>
+                        <p className="hint">
+                          入帳時間{' '}
+                          {new Date(selectedRecord.clearedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
