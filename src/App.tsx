@@ -56,6 +56,7 @@ export default function App() {
   const game = useGame()
   const [pulse, setPulse] = useState(0)
   const [buyMult, setBuyMult] = useState<1 | 10 | 'max'>(1)
+  const [upgradeOpen, setUpgradeOpen] = useState({ base: true, facility: true })
   const [researchBranch, setResearchBranch] = useState<ResearchBranch>('active')
   const [oddsCraftLevel, setOddsCraftLevel] = useState<number | null>(null)
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
@@ -245,9 +246,6 @@ export default function App() {
         {game.tab === 'upgrade' ? (
           <section className="panel upgrade-panel">
             <h2>升級線</h2>
-            <p className="lede">
-              基礎產能＋設施抉擇 · 每級升幅 −75% · 與研究／裝備互乘 · 代價用 A／B／C；轉生重置礦工／鑽頭／設施。主角闖關請去探險。
-            </p>
 
             <div className="buy-mult" role="group" aria-label="購買倍率">
               {([1, 10, 'max'] as const).map((m) => (
@@ -263,80 +261,117 @@ export default function App() {
             </div>
 
             <div className="upgrade-scroll">
-              <h3 className="section-label">基礎產能</h3>
-              <div className="stack">
-                <ActionCard
-                  title="招募礦工"
-                  desc={`目前 ${state.miners} 人 · 提升閒置產量`}
-                  cost={
-                    buyMult === 1
-                      ? formatBN(state.minerCost)
-                      : buyMult === 10
-                        ? `×10 · 起 ${formatBN(state.minerCost)}`
-                        : `Max · 起 ${formatBN(state.minerCost)}`
-                  }
-                  disabled={state.ore.lt(state.minerCost)}
-                  onClick={() =>
-                    buyMult === 1
-                      ? game.buyMiner()
-                      : game.buyMinerTimes(buyMult === 10 ? 10 : Infinity)
-                  }
-                />
-                <ActionCard
-                  title="強化鑽頭"
-                  desc={`Lv ${state.drillLevel} · 同時加強點擊同閒置`}
-                  cost={
-                    buyMult === 1
-                      ? formatBN(state.drillCost)
-                      : buyMult === 10
-                        ? `×10 · 起 ${formatBN(state.drillCost)}`
-                        : `Max · 起 ${formatBN(state.drillCost)}`
-                  }
-                  disabled={state.ore.lt(state.drillCost)}
-                  onClick={() =>
-                    buyMult === 1
-                      ? game.buyDrill()
-                      : game.buyDrillTimes(buyMult === 10 ? 10 : Infinity)
-                  }
-                />
-              </div>
+              <button
+                type="button"
+                className={
+                  upgradeOpen.base ? 'section-toggle on' : 'section-toggle'
+                }
+                aria-expanded={upgradeOpen.base}
+                onClick={() =>
+                  setUpgradeOpen((o) => ({ ...o, base: !o.base }))
+                }
+              >
+                <span>基礎產能</span>
+                <span className="section-toggle-chevron" aria-hidden>
+                  {upgradeOpen.base ? '▾' : '▸'}
+                </span>
+              </button>
+              {upgradeOpen.base ? (
+                <div className="stack">
+                  <ActionCard
+                    compact
+                    title={`招募礦工 · ${state.miners} 人`}
+                    desc=""
+                    cost={
+                      buyMult === 1
+                        ? formatBN(state.minerCost)
+                        : buyMult === 10
+                          ? `×10 · 起 ${formatBN(state.minerCost)}`
+                          : `Max · 起 ${formatBN(state.minerCost)}`
+                    }
+                    disabled={state.ore.lt(state.minerCost)}
+                    onClick={() =>
+                      buyMult === 1
+                        ? game.buyMiner()
+                        : game.buyMinerTimes(buyMult === 10 ? 10 : Infinity)
+                    }
+                  />
+                  <ActionCard
+                    compact
+                    title={`強化鑽頭 · Lv${state.drillLevel}`}
+                    desc=""
+                    cost={
+                      buyMult === 1
+                        ? formatBN(state.drillCost)
+                        : buyMult === 10
+                          ? `×10 · 起 ${formatBN(state.drillCost)}`
+                          : `Max · 起 ${formatBN(state.drillCost)}`
+                    }
+                    disabled={state.ore.lt(state.drillCost)}
+                    onClick={() =>
+                      buyMult === 1
+                        ? game.buyDrill()
+                        : game.buyDrillTimes(buyMult === 10 ? 10 : Infinity)
+                    }
+                  />
+                </div>
+              ) : null}
 
-              <h3 className="section-label">設施強化</h3>
-              <div className="stack">
-                {FACILITIES.map((def) => {
-                  const lv = facilityLevel(state, def.id)
-                  const unlocked = def.unlocked(state)
-                  const cost = facilityCost(def, lv)
-                  const costLabel = !unlocked
-                    ? '—'
-                    : buyMult === 1
-                      ? formatBN(cost)
-                      : buyMult === 10
-                        ? `×10 · 起 ${formatBN(cost)}`
-                        : `Max · 起 ${formatBN(cost)}`
-                  return (
-                    <ActionCard
-                      key={def.id}
-                      title={`${def.name} · Lv${lv}`}
-                      desc={
-                        unlocked
-                          ? `${def.role} · ${def.effectLine(lv)}`
-                          : `未解鎖 · ${def.unlockHint}`
-                      }
-                      cost={costLabel}
-                      disabled={!unlocked || state.ore.lt(cost)}
-                      onClick={() =>
-                        buyMult === 1
-                          ? game.buyFacility(def.id)
-                          : game.buyFacilityTimes(
-                              def.id,
-                              buyMult === 10 ? 10 : Infinity,
-                            )
-                      }
-                    />
-                  )
-                })}
-              </div>
+              <button
+                type="button"
+                className={
+                  upgradeOpen.facility
+                    ? 'section-toggle on'
+                    : 'section-toggle'
+                }
+                aria-expanded={upgradeOpen.facility}
+                onClick={() =>
+                  setUpgradeOpen((o) => ({ ...o, facility: !o.facility }))
+                }
+              >
+                <span>設施強化</span>
+                <span className="section-toggle-chevron" aria-hidden>
+                  {upgradeOpen.facility ? '▾' : '▸'}
+                </span>
+              </button>
+              {upgradeOpen.facility ? (
+                <div className="stack">
+                  {FACILITIES.map((def) => {
+                    const lv = facilityLevel(state, def.id)
+                    const unlocked = def.unlocked(state)
+                    const cost = facilityCost(def, lv)
+                    const costLabel = !unlocked
+                      ? '—'
+                      : buyMult === 1
+                        ? formatBN(cost)
+                        : buyMult === 10
+                          ? `×10 · 起 ${formatBN(cost)}`
+                          : `Max · 起 ${formatBN(cost)}`
+                    return (
+                      <ActionCard
+                        key={def.id}
+                        compact
+                        title={
+                          unlocked
+                            ? `${def.name} · Lv${lv}`
+                            : `${def.name} · ${def.unlockHint || '未解鎖'}`
+                        }
+                        desc=""
+                        cost={costLabel}
+                        disabled={!unlocked || state.ore.lt(cost)}
+                        onClick={() =>
+                          buyMult === 1
+                            ? game.buyFacility(def.id)
+                            : game.buyFacilityTimes(
+                                def.id,
+                                buyMult === 10 ? 10 : Infinity,
+                              )
+                        }
+                      />
+                    )
+                  })}
+                </div>
+              ) : null}
             </div>
           </section>
         ) : null}
@@ -770,7 +805,7 @@ function ActionCard({
     >
       <div>
         <strong>{title}</strong>
-        <p>{desc}</p>
+        {desc ? <p>{desc}</p> : null}
       </div>
       <span>{cost}</span>
     </button>

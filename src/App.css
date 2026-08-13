@@ -688,6 +688,36 @@ input {
   letter-spacing: 0.04em;
 }
 
+.section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: left;
+}
+
+.section-toggle.on {
+  border-color: rgba(240, 180, 41, 0.35);
+  background: rgba(240, 180, 41, 0.08);
+}
+
+.section-toggle-chevron {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
 .buy-mult {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
