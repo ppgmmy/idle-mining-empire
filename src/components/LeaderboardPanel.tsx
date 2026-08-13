@@ -87,9 +87,7 @@ export function LeaderboardPanel({ evolution, rebirth }: Props) {
 
       {status === 'loading' ? <p className="hint">載入緊…</p> : null}
       {status === 'error' ? (
-        <p className="hint">
-          連唔到排行榜（本機請用 npm run dev；線上需接 Upstash Redis）。
-        </p>
+        <p className="hint">連唔到排行榜，請稍後再試或撳重新整理。</p>
       ) : null}
 
       {status === 'ready' && rows.length === 0 ? (
