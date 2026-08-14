@@ -4,6 +4,7 @@ import {
   challengeOfferId,
   createInitialState,
   emptyChallengeCleared,
+  ensureGearIdentity,
   stageMaxHp,
 } from './state'
 import type {
@@ -146,7 +147,7 @@ function migrateGear(
     const slot = (
       valid.has(item.slot) ? item.slot : LEGACY_SLOT_MAP[item.slot] ?? item.slot
     ) as GearSlot
-    return { ...item, slot }
+    return ensureGearIdentity({ ...item, slot })
   }).filter((item) => valid.has(item.slot))
 
   const idSet = new Set(gear.map((g) => g.id))

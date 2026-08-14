@@ -20,8 +20,19 @@ import {
   RESEARCH_TREE,
   stardustInterestRate,
   sumAffix,
+  ensureGearIdentity,
 } from './state'
-import { craftGear, mineClick, rerollGear, sellUnequippedGear, startChallenge, abandonChallenge, tick } from './actions'
+import {
+  craftGear,
+  equipGear,
+  mineClick,
+  rerollGear,
+  sellUnequippedGear,
+  startChallenge,
+  abandonChallenge,
+  tick,
+  unequipGear,
+} from './actions'
 import { bn } from './bigNumber'
 import { RARITY_ORDER } from './types'
 
@@ -116,6 +127,58 @@ describe('side systems', () => {
     state = { ...state, miners: 20, drillLevel: 5, ore: bn(0) }
     state = tick(state, 2)
     expect(state.ore.gt(0)).toBe(true)
+  })
+
+  it('crafted gear gets unique name, hue, variant and quality', () => {
+    const a = rollGear('helmet', 5)
+    const b = rollGear('helmet', 5)
+    expect(a.name).toMatch(/·頭盔·/)
+    expect(a.name).not.toBe('頭盔·星鑄')
+    expect(a.hue).toBeGreaterThanOrEqual(0)
+    expect(a.hue).toBeLessThan(360)
+    expect(a.variant).toBeGreaterThanOrEqual(0)
+    expect(a.quality).toBeGreaterThan(0.8)
+    expect(a.quality).toBeLessThan(1.3)
+    // 極罕先撞名；至少 identity 欄位唔會全等
+    expect(
+      a.name !== b.name || a.hue !== b.hue || a.variant !== b.variant || a.quality !== b.quality,
+    ).toBe(true)
+  })
+
+  it('ensureGearIdentity renames generic 星鑄 gear stably', () => {
+    const raw = {
+      id: 'helmet-stable-id-42',
+      name: '頭盔·星鑄',
+      slot: 'helmet' as const,
+      rarity: 'common' as const,
+      affixes: [{ id: 'minePower' as const, label: '開採', value: 0.01 }],
+    }
+    const once = ensureGearIdentity(raw)
+    const twice = ensureGearIdentity(once)
+    expect(once.name).toMatch(/·頭盔·/)
+    expect(once.name).not.toBe('頭盔·星鑄')
+    expect(twice.name).toBe(once.name)
+    expect(twice.hue).toBe(once.hue)
+  })
+
+  it('equip and unequip toggle slot bonuses', () => {
+    let state = createInitialState()
+    const item = {
+      ...rollGear('gloves', 3),
+      affixes: [{ id: 'clickMult' as const, label: '點擊倍率', value: 0.5 }],
+    }
+    state = {
+      ...state,
+      gear: [item],
+      equipped: { gloves: item.id },
+    }
+    const on = getClickGain(state)
+    state = unequipGear(state, item.id)
+    expect(state.equipped.gloves).toBeUndefined()
+    expect(getClickGain(state).lt(on)).toBe(true)
+    state = equipGear(state, item.id)
+    expect(state.equipped.gloves).toBe(item.id)
+    expect(getClickGain(state).eq(on)).toBe(true)
   })
 
   it('has 21 rarity tiers and can climb to genesis', () => {

@@ -12,7 +12,7 @@ import type {
   Rarity,
   ResearchNode,
 } from './types'
-import { AFFIX_META, RARITY_ORDER, SLOT_META } from './types'
+import { AFFIX_META, QUALITY_BANDS, RARITY_ORDER, SLOT_ICONS, SLOT_META } from './types'
 
 /**
  * 全研究樹：每種產量加成只有一個升級位（點擊／閒置／離線各一）。
@@ -330,14 +330,16 @@ function pickAffixDefs(rarity: Rarity, slot: GearSlot): typeof AFFIX_POOL {
   const secondaryPool = AFFIX_POOL.filter((a) => !primaryIds.includes(a.id))
 
   const picked: typeof AFFIX_POOL = []
-  const first = primaryPool[Math.floor(Math.random() * primaryPool.length)]!
-  picked.push(first)
+  // 主詞條池洗牌：多詞條時盡量先塞滿兩個主位，同槽差更明顯
+  const primaries = [...primaryPool].sort(() => Math.random() - 0.5)
+  for (const a of primaries) {
+    if (picked.length >= Math.min(count, primaryPool.length)) break
+    if (picked.some((p) => p.id === a.id)) continue
+    picked.push(a)
+  }
 
-  const restPool = [...primaryPool, ...secondaryPool, ...primaryPool].filter(
-    (a) => a.id !== first.id,
-  )
-  const shuffled = restPool.sort(() => Math.random() - 0.5)
-  for (const a of shuffled) {
+  const restPool = [...secondaryPool, ...primaryPool].sort(() => Math.random() - 0.5)
+  for (const a of restPool) {
     if (picked.length >= count) break
     if (picked.some((p) => p.id === a.id)) continue
     picked.push(a)
@@ -350,17 +352,25 @@ function pickAffixDefs(rarity: Rarity, slot: GearSlot): typeof AFFIX_POOL {
   return picked.slice(0, count)
 }
 
-function makeAffix(def: (typeof AFFIX_POOL)[number], rarity: Rarity): Affix {
+function makeAffix(
+  def: (typeof AFFIX_POOL)[number],
+  rarity: Rarity,
+  quality = 1,
+): Affix {
   return {
     id: def.id,
     label: def.label,
-    value: accumulateAffixValue(rarity),
+    value: Number((accumulateAffixValue(rarity) * quality).toFixed(6)),
   }
 }
 
-/** 打造：詞條由普通起每階升幅互乘至目前稀有度 */
-export function rollAffixes(rarity: GearItem['rarity'], slot: GearSlot): Affix[] {
-  return pickAffixDefs(rarity, slot).map((def) => makeAffix(def, rarity))
+/** 打造：詞條由普通起每階升幅互乘至目前稀有度，再 × 品質 */
+export function rollAffixes(
+  rarity: GearItem['rarity'],
+  slot: GearSlot,
+  quality = 1,
+): Affix[] {
+  return pickAffixDefs(rarity, slot).map((def) => makeAffix(def, rarity, quality))
 }
 
 /**
@@ -378,16 +388,17 @@ export function upgradeAffixesOnRarityUp(item: GearItem, newRarity: Rarity): Aff
   const need = affixCount(newRarity)
   if (next.length >= need) return next
 
+  const quality = item.quality ?? 1
   const used = new Set(next.map((a) => a.id))
   const defs = pickAffixDefs(newRarity, item.slot).filter((d) => !used.has(d.id))
   for (const def of defs) {
     if (next.length >= need) break
-    next.push(makeAffix(def, newRarity))
+    next.push(makeAffix(def, newRarity, quality))
   }
   for (const def of AFFIX_POOL) {
     if (next.length >= need) break
     if (used.has(def.id) || next.some((a) => a.id === def.id)) continue
-    next.push(makeAffix(def, newRarity))
+    next.push(makeAffix(def, newRarity, quality))
   }
   return next
 }
@@ -433,6 +444,114 @@ export function rarityAccent(rarity: Rarity): string {
   const i = rarityIndex(rarity)
   const hue = (i * 17) % 360
   return `hsl(${hue} 72% 58%)`
+}
+
+/** 單件邊框色：以 hue 為主，稀有度略提高飽和 */
+export function gearAccent(item: GearItem): string {
+  const hue = ((item.hue ?? rarityIndex(item.rarity) * 17) % 360 + 360) % 360
+  const sat = 58 + Math.min(22, rarityIndex(item.rarity))
+  const light = 52 + Math.min(10, Math.floor((item.quality ?? 1) * 8))
+  return `hsl(${hue} ${sat}% ${light}%)`
+}
+
+export function gearIcon(item: GearItem): string {
+  const icons = SLOT_ICONS[item.slot]
+  const i = Math.abs(item.variant ?? 0) % icons.length
+  return icons[i]!
+}
+
+export function qualityLabel(quality: number | undefined): string {
+  const q = quality ?? 1
+  for (const band of QUALITY_BANDS) {
+    if (q >= band.min) return band.label
+  }
+  return '粗鑄'
+}
+
+/** 同槽名前綴／後綴，打造時組合出唔同名 */
+const GEAR_PREFIXES: Record<GearSlot, string[]> = {
+  helmet: ['虛空', '隕鐵', '星核', '深淵', '裂隙', '輝銅', '霜晶', '日冕', '暗脈', '玄鐵'],
+  mask: ['幽影', '赤焰', '蒼穹', '裂面', '夜梟', '砂塵', '銀暈', '黑曜', '流砂', '餘燼'],
+  earring: ['星塵', '月弧', '彗尾', '虹晶', '霆光', '寒露', '焰心', '寂響', '微光', '脈動'],
+  armor: ['岩甲', '星鎧', '重殼', '裂盾', '熔脈', '霜胄', '空殼', '鐵幕', '晶脊', '暗鎧'],
+  gloves: ['掘爪', '脈拳', '星握', '裂指', '霆掌', '礦握', '疾擊', '深掘', '餘熱', '虹握'],
+  belt: ['束核', '星環', '裂帶', '脈結', '重鎖', '虹束', '霜扣', '空鏈', '餘振', '礦環'],
+  boots: ['躍痕', '星履', '裂步', '塵蹤', '霆踏', '深行', '虹跡', '霜步', '空行', '礦履'],
+}
+
+const GEAR_SUFFIXES = [
+  '裂紋',
+  '銘紋',
+  '殘響',
+  '餘燼',
+  '星痕',
+  '礦紋',
+  '回響',
+  '斷層',
+  '流光',
+  '幽光',
+  '殘章',
+  '回聲',
+]
+
+function hashSeed(input: string): number {
+  let h = 2166136261
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return Math.abs(h)
+}
+
+export function rollGearQuality(): number {
+  // 略偏中位：多數精良附近，偶有完美／粗鑄
+  const r = Math.random()
+  const skewed = r * r * 0.55 + r * 0.45
+  return Number((0.88 + skewed * 0.3).toFixed(3))
+}
+
+export function buildGearName(
+  slot: GearSlot,
+  seed: number,
+  tag?: 'admin' | 'craft',
+): string {
+  const prefixes = GEAR_PREFIXES[slot]
+  const prefix = prefixes[seed % prefixes.length]!
+  const suffix = GEAR_SUFFIXES[Math.floor(seed / 7) % GEAR_SUFFIXES.length]!
+  const base = `${prefix}·${SLOT_META[slot].label}·${suffix}`
+  return tag === 'admin' ? `${base}·管理` : base
+}
+
+export function isGenericGearName(name: string, slot: GearSlot): boolean {
+  const label = SLOT_META[slot].label
+  return (
+    name === `${label}·星鑄` ||
+    name === `${label}·管理` ||
+    name === label ||
+    !name.includes('·')
+  )
+}
+
+/** 補齊舊存檔缺少嘅單件身份；名稱若係通用「槽·星鑄」會重命名 */
+export function ensureGearIdentity(item: GearItem): GearItem {
+  const seed = hashSeed(item.id)
+  const hue = item.hue ?? seed % 360
+  const icons = SLOT_ICONS[item.slot]
+  const variant = item.variant ?? Math.floor(seed / 360) % icons.length
+  const quality = item.quality ?? Number((0.94 + ((seed % 20) / 100)).toFixed(3))
+  const name =
+    item.name && !isGenericGearName(item.name, item.slot)
+      ? item.name
+      : buildGearName(item.slot, seed, item.name?.includes('管理') ? 'admin' : 'craft')
+  if (
+    item.hue === hue &&
+    item.variant === variant &&
+    item.quality === quality &&
+    item.name === name
+  ) {
+    return item
+  }
+  return { ...item, hue, variant, quality, name }
 }
 
 /**
@@ -511,15 +630,27 @@ export function gainCraftXp(state: GameState, amount = 1): GameState {
   return { ...state, craftLevel, craftXp }
 }
 
-export function rollGear(slot: GearSlot, craftLevel = 1): GearItem {
+export function rollGear(
+  slot: GearSlot,
+  craftLevel = 1,
+  opts?: { tag?: 'admin' | 'craft' },
+): GearItem {
   const rarity = rollRarity(craftLevel)
+  const quality = rollGearQuality()
+  const hue = Math.floor(Math.random() * 360)
+  const variant = Math.floor(Math.random() * SLOT_ICONS[slot].length)
+  const id = `${slot}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
+  const seed = hashSeed(id) ^ hue ^ (variant * 97)
   return {
-    id: `${slot}-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-    name: `${SLOT_META[slot].label}·星鑄`,
+    id,
+    name: buildGearName(slot, seed, opts?.tag ?? 'craft'),
     slot,
     rarity,
-    affixes: rollAffixes(rarity, slot),
+    affixes: rollAffixes(rarity, slot, quality),
     rerolls: 0,
+    hue,
+    variant,
+    quality,
   }
 }
 

@@ -51,6 +51,10 @@ import {
   stageMaxHp,
   stageVeinName,
   stardustInterestRate,
+  ensureGearIdentity,
+  gearAccent,
+  gearIcon,
+  qualityLabel,
 } from './game/state'
 import { canAccessTab } from './game/admin'
 import {
@@ -546,9 +550,51 @@ export default function App() {
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
-              七槽各穿一件先生效 · 打造耗星塵（120×1.55^件數）· 晉升／重鑄耗晶體 · 庫存最多{' '}
+              七槽各穿一件先生效 · 可隨時穿／脫 · 打造耗星塵（120×1.55^件數）· 晉升／重鑄耗晶體 · 庫存最多{' '}
               {gearCapacity(state)} · {state.gear.length}/{gearCapacity(state)}
             </p>
+            <div className="gear-doll" aria-label="已穿戴裝備">
+              {GEAR_SLOTS.map((slot) => {
+                const eqId = state.equipped[slot]
+                const item = eqId
+                  ? state.gear.find((g) => g.id === eqId)
+                  : undefined
+                const shown = item ? ensureGearIdentity(item) : null
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    className={
+                      shown ? 'gear-doll-slot gear-doll-slot-filled' : 'gear-doll-slot'
+                    }
+                    style={
+                      shown
+                        ? {
+                            borderColor: gearAccent(shown),
+                            boxShadow: `0 0 0 1px ${gearAccent(shown)}33`,
+                          }
+                        : undefined
+                    }
+                    title={
+                      shown
+                        ? `卸下 ${shown.name}`
+                        : `${SLOT_META[slot].label}（空）· ${SLOT_META[slot].role}`
+                    }
+                    onClick={() => {
+                      if (shown) game.unequipGear(shown.id)
+                    }}
+                  >
+                    <span className="gear-doll-icon" aria-hidden>
+                      {shown ? gearIcon(shown) : '·'}
+                    </span>
+                    <span className="gear-doll-label">{SLOT_META[slot].label}</span>
+                    <span className="gear-doll-name">
+                      {shown ? shown.name.replace(/·管理$/, '') : '空'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
             <p className="craft-level-line">
               打造 Lv{state.craftLevel} · {state.craftXp}/
               {craftsNeededForNextLevel(state.craftLevel)} · 最高可出{' '}
@@ -710,34 +756,61 @@ export default function App() {
                       if (byRarity !== 0) return byRarity
                       return state.gear.indexOf(b) - state.gear.indexOf(a)
                     })
-                    .map((item) => {
+                    .map((raw) => {
+                      const item = ensureGearIdentity(raw)
                       const cost = rerollGearCost(item)
                       const canAfford = state.crystals.gte(cost)
                       const upgrading = canUpgradeRarity(item.rarity)
                       const meta = SLOT_META[item.slot]
                       const rerolls = item.rerolls ?? 0
                       const isEquipped = state.equipped[item.slot] === item.id
+                      const accent = gearAccent(item)
+                      const dominant = item.affixes
+                        .slice()
+                        .sort(
+                          (a, b) =>
+                            effectiveAffixValue(item.slot, b) -
+                            effectiveAffixValue(item.slot, a),
+                        )[0]
                       return (
                         <article
                           key={item.id}
                           className={
                             isEquipped ? 'gear-card gear-card-equipped' : 'gear-card'
                           }
-                          style={{ borderColor: rarityAccent(item.rarity) }}
+                          style={{ borderColor: accent }}
                         >
                           <div className="gear-card-head">
                             <h3>
                               <span className="gear-name">
+                                <span
+                                  className="gear-icon"
+                                  style={{ background: `${accent}22` }}
+                                  aria-hidden
+                                >
+                                  {gearIcon(item)}
+                                </span>
                                 {isEquipped ? '● ' : ''}
                                 {item.name}
                               </span>
                               <span className="gear-sub">
                                 {meta.label}·{meta.role}
+                                <span className="gear-quality">
+                                  {qualityLabel(item.quality)}
+                                  {item.quality != null
+                                    ? ` ×${item.quality.toFixed(2)}`
+                                    : ''}
+                                </span>
+                                {dominant ? (
+                                  <span className="gear-focus">
+                                    主看 {AFFIX_META[dominant.id].short}
+                                  </span>
+                                ) : null}
                                 <span className="rarity-inline">
                                   {rarityTierNumber(item.rarity)}
                                   <span
                                     className="rarity-dot"
-                                    style={{ background: rarityAccent(item.rarity) }}
+                                    style={{ background: accent }}
                                   />
                                   {RARITY_LABEL[item.rarity]}
                                 </span>

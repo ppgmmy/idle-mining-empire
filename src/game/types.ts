@@ -191,7 +191,33 @@ export type GearItem = {
   affixes: Affix[]
   /** 重鑄次數，用來推高下次重鑄成本 */
   rerolls?: number
+  /** 單件色相 0–359，同槽件視覺區分 */
+  hue?: number
+  /** 同槽造型變體 index */
+  variant?: number
+  /** 品質倍率（約 0.88–1.18），打造時寫入詞條 */
+  quality?: number
 }
+
+/** 同槽造型：emoji／符號，打造時隨機一款 */
+export const SLOT_ICONS: Record<GearSlot, string[]> = {
+  helmet: ['🪖', '⛑️', '👑', '🧿', '☄️', '🗿'],
+  mask: ['🎭', '😈', '🦊', '🦇', '🗿', '💀'],
+  earring: ['💎', '✨', '🔮', '💫', '🌀', '✴️'],
+  armor: ['🛡️', '🧱', '⚔️', '🗿', '🌑', '🔷'],
+  gloves: ['🧤', '✊', '🤘', '⛏️', '🛠️', '⚡'],
+  belt: ['🪢', '⛓️', '🔗', '📿', '🧿', '🌑'],
+  boots: ['👢', '👟', '🥾', '💨', '🌀', '⚡'],
+}
+
+/** 品質文案（依 quality 數值） */
+export const QUALITY_BANDS: Array<{ min: number; label: string }> = [
+  { min: 1.12, label: '完美' },
+  { min: 1.05, label: '卓越' },
+  { min: 0.98, label: '精良' },
+  { min: 0.92, label: '普通' },
+  { min: 0, label: '粗鑄' },
+]
 
 export type ResearchBranch = 'active' | 'idle' | 'automation' | 'economy'
 

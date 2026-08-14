@@ -46,7 +46,7 @@ import {
 import { isAdmin } from './admin'
 import { grantOre, spendCrystals, spendOre, spendStardust } from './save'
 import type { FacilityId, GameState, GearSlot, TabId } from './types'
-import { GEAR_SLOTS, OFFLINE_CAP_HOURS, RARITY_ORDER, rarityTierNumber, SLOT_META } from './types'
+import { GEAR_SLOTS, OFFLINE_CAP_HOURS, RARITY_ORDER, rarityTierNumber } from './types'
 
 /** 管理員一鍵開通：研究保底等級 */
 const ADMIN_RESEARCH_FLOOR = 5
@@ -340,16 +340,15 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
       if (!equipped[slot]) equipped[slot] = existing.id
       continue
     }
-    const item = {
-      id: `admin-${slot}-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-      name: `${SLOT_META[slot].label}·管理`,
-      slot,
+    const item = rollGear(slot, ADMIN_CRAFT_LEVEL, { tag: 'admin' })
+    // 管理裝備強制頂階
+    const topItem = {
+      ...item,
       rarity: topRarity,
-      affixes: rollAffixes(topRarity, slot),
-      rerolls: 0,
+      affixes: rollAffixes(topRarity, slot, item.quality ?? 1),
     }
-    gear = [...gear, item]
-    equipped[slot] = item.id
+    gear = [...gear, topItem]
+    equipped[slot] = topItem.id
   }
 
   return { ...next, gear, equipped }
