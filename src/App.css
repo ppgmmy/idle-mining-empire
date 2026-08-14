@@ -1107,10 +1107,50 @@ textarea {
   min-height: 76px;
 }
 
+.gear-doll-slot-selected {
+  background: rgba(214, 186, 120, 0.12);
+}
+
 .gear-doll-slot-filled {
   border-style: solid;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
+}
+
+.gear-doll-slot-filled.gear-doll-slot-selected {
+  background: rgba(214, 186, 120, 0.14);
+}
+
+.gear-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.gear-filter-chip {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.gear-filter-chip.on {
+  border-color: rgba(214, 186, 120, 0.55);
+  color: var(--text);
+  background: rgba(214, 186, 120, 0.12);
+}
+
+.gear-filter-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.craft-slot-on {
+  box-shadow: inset 0 0 0 1px rgba(214, 186, 120, 0.45);
 }
 
 .gear-doll-slot:hover {

@@ -66,6 +66,7 @@ import {
   RARITY_ORDER,
   rarityTierNumber,
   SLOT_META,
+  type GearSlot,
 } from './game/types'
 import { useGame } from './game/useGame'
 import './App.css'
@@ -78,6 +79,7 @@ export default function App() {
   const [oddsCraftLevel, setOddsCraftLevel] = useState<number | null>(null)
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
   const [challengeLogOpen, setChallengeLogOpen] = useState(false)
+  const [gearFilter, setGearFilter] = useState<GearSlot | null>(null)
   const { state } = game
   const previewCraftLevel = oddsCraftLevel ?? state.craftLevel
   const craftOdds = craftRarityChances(previewCraftLevel)
@@ -91,6 +93,18 @@ export default function App() {
     : 0
   const selectedRecord =
     state.challengeRecords?.find((r) => r.id === challengeRecordId) ?? null
+  const filteredGear = gearFilter
+    ? state.gear.filter((g) => g.slot === gearFilter)
+    : state.gear
+  const selectGearSlot = (slot: GearSlot) => {
+    setGearFilter((prev) => (prev === slot ? null : slot))
+    queueMicrotask(() => {
+      document.getElementById('gear-inventory')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    })
+  }
 
   if (!game.ready) {
     return <div className="boot">載入礦場中…</div>
@@ -552,47 +566,84 @@ export default function App() {
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
-              七槽各穿一件先生效 · 可隨時穿／脫 · 打造耗星塵（120×1.55^件數）· 晉升／重鑄耗晶體 · 庫存最多{' '}
-              {gearCapacity(state)} · {state.gear.length}/{gearCapacity(state)}
+              撳槽位（例如頭盔）篩選該槽全部裝備再穿脫 · 打造耗星塵（120×1.55^件數）· 晉升／重鑄耗晶體 · 庫存{' '}
+              {state.gear.length}/{gearCapacity(state)}
             </p>
-            <div className="gear-doll" aria-label="已穿戴裝備">
+            <div className="gear-doll" aria-label="裝備槽位篩選">
               {GEAR_SLOTS.map((slot) => {
                 const eqId = state.equipped[slot]
                 const item = eqId
                   ? state.gear.find((g) => g.id === eqId)
                   : undefined
                 const shown = item ? ensureGearIdentity(item) : null
+                const count = state.gear.filter((g) => g.slot === slot).length
+                const selected = gearFilter === slot
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    className={[
+                      'gear-doll-slot',
+                      shown ? 'gear-doll-slot-filled' : '',
+                      selected ? 'gear-doll-slot-selected' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    style={
+                      shown
+                        ? {
+                            borderColor: gearAccent(shown),
+                            boxShadow: selected
+                              ? `0 0 0 2px ${gearAccent(shown)}`
+                              : `0 0 0 1px ${gearAccent(shown)}33`,
+                          }
+                        : undefined
+                    }
+                    aria-pressed={selected}
+                    title={
+                      selected
+                        ? `取消篩選${SLOT_META[slot].label}`
+                        : `睇晒全部${SLOT_META[slot].label}（${count}）`
+                    }
+                    onClick={() => selectGearSlot(slot)}
+                  >
+                    <span className="gear-doll-icon" aria-hidden>
+                      {shown ? gearIcon(shown) : '·'}
+                    </span>
+                    <span className="gear-doll-label">
+                      {SLOT_META[slot].label}
+                      {count > 0 ? ` ·${count}` : ''}
+                    </span>
+                    <span className="gear-doll-name">
+                      {shown ? shown.name.replace(/·管理$/, '') : '空／揀槽'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="gear-filter-bar" role="toolbar" aria-label="裝備槽篩選">
+              <button
+                type="button"
+                className={gearFilter == null ? 'gear-filter-chip on' : 'gear-filter-chip'}
+                aria-pressed={gearFilter == null}
+                onClick={() => setGearFilter(null)}
+              >
+                全部 · {state.gear.length}
+              </button>
+              {GEAR_SLOTS.map((slot) => {
+                const count = state.gear.filter((g) => g.slot === slot).length
                 return (
                   <button
                     key={slot}
                     type="button"
                     className={
-                      shown ? 'gear-doll-slot gear-doll-slot-filled' : 'gear-doll-slot'
+                      gearFilter === slot ? 'gear-filter-chip on' : 'gear-filter-chip'
                     }
-                    style={
-                      shown
-                        ? {
-                            borderColor: gearAccent(shown),
-                            boxShadow: `0 0 0 1px ${gearAccent(shown)}33`,
-                          }
-                        : undefined
-                    }
-                    title={
-                      shown
-                        ? `卸下 ${shown.name}`
-                        : `${SLOT_META[slot].label}（空）· ${SLOT_META[slot].role}`
-                    }
-                    onClick={() => {
-                      if (shown) game.unequipGear(shown.id)
-                    }}
+                    aria-pressed={gearFilter === slot}
+                    disabled={count === 0}
+                    onClick={() => selectGearSlot(slot)}
                   >
-                    <span className="gear-doll-icon" aria-hidden>
-                      {shown ? gearIcon(shown) : '·'}
-                    </span>
-                    <span className="gear-doll-label">{SLOT_META[slot].label}</span>
-                    <span className="gear-doll-name">
-                      {shown ? shown.name.replace(/·管理$/, '') : '空'}
-                    </span>
+                    {SLOT_META[slot].label} · {count}
                   </button>
                 )
               })}
@@ -611,10 +662,17 @@ export default function App() {
                   <button
                     key={slot}
                     type="button"
-                    className="secondary-btn"
+                    className={
+                      gearFilter === slot
+                        ? 'secondary-btn craft-slot-on'
+                        : 'secondary-btn'
+                    }
                     title={SLOT_META[slot].desc}
                     disabled={!canCraft || !canAfford}
-                    onClick={() => game.craftGear(slot)}
+                    onClick={() => {
+                      setGearFilter(slot)
+                      game.craftGear(slot)
+                    }}
                   >
                     {SLOT_META[slot].label}
                     <span className="craft-role">{SLOT_META[slot].role}</span>
@@ -710,15 +768,33 @@ export default function App() {
             {state.gear.length === 0 ? (
               <p className="hint">尚未有裝備。</p>
             ) : (
-              <div className="gear-inventory">
+              <div className="gear-inventory" id="gear-inventory">
                 <div className="gear-inventory-head">
-                  <span>庫存（穿戴先生效 · 每槽一件）</span>
                   <span>
-                    {state.gear.length}/{gearCapacity(state)}
+                    {gearFilter
+                      ? `${SLOT_META[gearFilter].label}（${filteredGear.length}）· 點穿戴／卸下`
+                      : `庫存全部（${state.gear.length}）· 可撳上方槽位篩選`}
+                  </span>
+                  <span>
+                    {filteredGear.length}/{gearCapacity(state)}
                   </span>
                 </div>
+                {gearFilter && state.equipped[gearFilter] ? (
+                  <div className="row-actions gear-sell-row">
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      onClick={() => {
+                        const id = state.equipped[gearFilter]
+                        if (id) game.unequipGear(id)
+                      }}
+                    >
+                      卸下目前{SLOT_META[gearFilter].label}
+                    </button>
+                  </div>
+                ) : null}
                 {(() => {
-                  const unequipped = state.gear.filter(
+                  const unequipped = filteredGear.filter(
                     (g) => state.equipped[g.slot] !== g.id,
                   )
                   if (unequipped.length === 0) return null
@@ -726,6 +802,9 @@ export default function App() {
                     (sum, g) => sum.add(sellGearRefund(g)),
                     bn(0),
                   )
+                  const label = gearFilter
+                    ? SLOT_META[gearFilter].label
+                    : '未穿戴'
                   return (
                     <div className="row-actions gear-sell-row">
                       <button
@@ -733,18 +812,25 @@ export default function App() {
                         className="secondary-btn"
                         onClick={() => {
                           const ok = window.confirm(
-                            `賣出 ${unequipped.length} 件未穿戴裝備？\n預計收回 ${formatBN(refund)} 星塵。`,
+                            gearFilter
+                              ? `賣出 ${unequipped.length} 件未穿戴${label}？\n預計收回 ${formatBN(refund)} 星塵。\n（只賣目前篩選槽）`
+                              : `賣出 ${unequipped.length} 件未穿戴裝備？\n預計收回 ${formatBN(refund)} 星塵。`,
                           )
-                          if (ok) game.sellUnequippedGear()
+                          if (ok) game.sellUnequippedGear(gearFilter ?? undefined)
                         }}
                       >
-                        一鍵賣未穿戴 · +{formatBN(refund)} 星塵
+                        一鍵賣未穿戴{gearFilter ? label : ''} · +{formatBN(refund)} 星塵
                       </button>
                     </div>
                   )
                 })()}
                 <div className="gear-inventory-scroll">
-                  {state.gear
+                  {filteredGear.length === 0 ? (
+                    <p className="hint">
+                      尚未有{SLOT_META[gearFilter!].label}，可喺上方打造。
+                    </p>
+                  ) : null}
+                  {filteredGear
                     .slice()
                     .sort((a, b) => {
                       const aEq = state.equipped[a.slot] === a.id

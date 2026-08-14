@@ -413,13 +413,17 @@ export function sellGearRefund(item: { rarity: (typeof RARITY_ORDER)[number] }) 
   return bn(8).mul(bn(1.35).pow(rarityTierNumber(item.rarity) - 1))
 }
 
-export function sellUnequippedGear(state: GameState): GameState {
+export function sellUnequippedGear(
+  state: GameState,
+  slot?: GearSlot,
+): GameState {
   const equippedIds = new Set(
     Object.values(state.equipped).filter((id): id is string => !!id),
   )
   let refund = bn(0)
   const keep = state.gear.filter((item) => {
     if (equippedIds.has(item.id)) return true
+    if (slot && item.slot !== slot) return true
     refund = refund.add(sellGearRefund(item))
     return false
   })

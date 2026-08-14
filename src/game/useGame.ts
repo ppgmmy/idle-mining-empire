@@ -261,7 +261,8 @@ export function useGame() {
     },
     equipGear: (gearId: string) => commit((s) => equipGear(s, gearId)),
     unequipGear: (gearId: string) => commit((s) => unequipGear(s, gearId)),
-    sellUnequippedGear: () => commit((s) => sellUnequippedGear(s)),
+    sellUnequippedGear: (slot?: GearSlot) =>
+      commit((s) => sellUnequippedGear(s, slot)),
     dropGear: (gearId: string) => commit((s) => dropGear(s, gearId)),
     rerollGear: (gearId: string) => commit((s) => rerollGear(s, gearId)),
     rebirth: () => {
