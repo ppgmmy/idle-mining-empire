@@ -14,8 +14,10 @@ import {
   canSpawnBoss,
   createBoss,
   createInitialState,
+  craftsNeededForNextLevel,
   DRILL_CLICK_GROWTH,
   DRILL_COST_GROWTH,
+  emptyChallengeCleared,
   emptyFacilities,
   evolutionMult,
   nextEvolutionPower,
@@ -354,9 +356,9 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
   return { ...next, gear, equipped }
 }
 
-/** 打造裝備：星塵代價，隨庫存件數急升 */
+/** 打造裝備：星塵代價，隨庫存件數上升（略軟，方便刷裝） */
 export function craftGearCost(state: GameState) {
-  return bn(120).mul(bn(1.55).pow(state.gear.length))
+  return bn(90).mul(bn(1.48).pow(state.gear.length))
 }
 
 export function craftGear(state: GameState, slot: GearSlot): GameState {
@@ -496,29 +498,36 @@ export function doRebirth(state: GameState): GameState {
   }
 }
 
-/** 進化：重置進度／研究／晶體，保留星塵／裝備／挑戰；進化次數 +1 */
+/** 進化：重置進度／研究／晶體／挑戰；保留星塵／裝備／打造；進化次數 +1 */
 export function doEvolve(state: GameState): GameState {
   if (!canEvolve(state)) return state
   const nextEvo = (state.evolutionCount ?? 0) + 1
   const nextPower = nextEvolutionPower(state)
   const fresh = createInitialState(Date.now())
-  return {
+  let next: GameState = {
     ...fresh,
     stardust: state.stardust,
     gear: state.gear,
     equipped: state.equipped,
     craftLevel: state.craftLevel,
     craftXp: state.craftXp,
-    challengeCleared: state.challengeCleared,
-    challengeRecords: state.challengeRecords,
-    activeChallengeId: state.activeChallengeId,
+    // 挑戰歸零：進化後以裝備為核心重打挑戰線
+    challengeCleared: emptyChallengeCleared(),
+    challengeRecords: [],
+    activeChallengeId: null,
     evolutionCount: nextEvo,
     evolutionPower: nextPower,
   }
+  // 進化贈打造經驗，鼓勵繼續刷裝備
+  const craftBonus = Math.max(
+    2,
+    Math.ceil(craftsNeededForNextLevel(next.craftLevel) * 0.5),
+  )
+  return gainCraftXp(next, craftBonus)
 }
 
 export function describeEvolveNotice(state: GameState): string {
-  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生歸零 · 星塵／裝備／挑戰已保留 · 晶體已重置`
+  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生／挑戰歸零 · 星塵／裝備已保留 · 晶體已重置 · 打造經驗+`
 }
 
 export function describeRebirthNotice(

@@ -27,6 +27,8 @@ import {
   formatAffixMult,
   formatResearchEffects,
   gearCapacity,
+  gearItemPower,
+  gearPowerDeltaPct,
   getActiveChallenge,
   getClickGain,
   bossCrystalReward,
@@ -566,7 +568,7 @@ export default function App() {
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
-              撳槽位（例如頭盔）篩選該槽全部裝備再穿脫 · 打造耗星塵（120×1.55^件數）· 晉升／重鑄耗晶體 · 庫存{' '}
+              撳槽位篩選該槽全部裝備再比較穿脫 · 打造耗星塵（90×1.48^件數）· 晉升／重鑄耗晶體 · 庫存{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
             <div className="gear-doll" aria-label="裝備槽位篩選">
@@ -836,9 +838,8 @@ export default function App() {
                       const aEq = state.equipped[a.slot] === a.id
                       const bEq = state.equipped[b.slot] === b.id
                       if (aEq !== bEq) return aEq ? -1 : 1
-                      const aMax = !canUpgradeRarity(a.rarity)
-                      const bMax = !canUpgradeRarity(b.rarity)
-                      if (aMax !== bMax) return aMax ? 1 : -1
+                      const byPower = gearItemPower(b) - gearItemPower(a)
+                      if (Math.abs(byPower) > 1e-9) return byPower
                       const byRarity =
                         rarityTierNumber(b.rarity) - rarityTierNumber(a.rarity)
                       if (byRarity !== 0) return byRarity
@@ -853,6 +854,13 @@ export default function App() {
                       const rerolls = item.rerolls ?? 0
                       const isEquipped = state.equipped[item.slot] === item.id
                       const accent = gearAccent(item)
+                      const equippedPeer = (() => {
+                        const eqId = state.equipped[item.slot]
+                        if (!eqId || eqId === item.id) return null
+                        const peer = state.gear.find((g) => g.id === eqId)
+                        return peer ? ensureGearIdentity(peer) : null
+                      })()
+                      const deltaPct = gearPowerDeltaPct(item, equippedPeer)
                       const dominant = item.affixes
                         .slice()
                         .sort(
@@ -889,6 +897,21 @@ export default function App() {
                                     ? ` ×${item.quality.toFixed(2)}`
                                     : ''}
                                 </span>
+                                <span className="gear-power">
+                                  戰力 ×{gearItemPower(item).toFixed(2)}
+                                </span>
+                                {deltaPct != null ? (
+                                  <span
+                                    className={
+                                      deltaPct >= 0
+                                        ? 'gear-delta gear-delta-up'
+                                        : 'gear-delta gear-delta-down'
+                                    }
+                                  >
+                                    比已穿 {deltaPct >= 0 ? '+' : ''}
+                                    {deltaPct}%
+                                  </span>
+                                ) : null}
                                 {dominant ? (
                                   <span className="gear-focus">
                                     主看 {AFFIX_META[dominant.id].short}
@@ -998,7 +1021,7 @@ export default function App() {
           <section className="panel rebirth-panel">
             <h2>三重轉生</h2>
             <p className="lede rebirth-lede">
-              研究 10 轉 · 裝備 20 轉 · 進化 {EVOLUTION_UNLOCK_REBIRTH} 轉 · 息率
+              研究 10 轉 · 裝備 12 轉 · 進化 {EVOLUTION_UNLOCK_REBIRTH} 轉 · 息率
               晶體 {formatBN(crystalInterestRate(state).mul(100))}% · 星塵{' '}
               {formatBN(stardustInterestRate(state).mul(100))}%
             </p>
@@ -1044,8 +1067,8 @@ export default function App() {
                   {formatBN(evolutionFactor(state.rebirthCount))}（今轉 +
                   {formatBN(evolutionSlice(state.rebirthCount).mul(100))}%）
                 </li>
-                <li>保留：星塵、裝備、打造等級、挑戰進度</li>
-                <li>重置：礦石進度、轉生次數、研究、晶體、設施</li>
+                <li>保留：星塵、裝備、打造等級（並贈打造經驗）</li>
+                <li>重置：礦石進度、轉生、研究、晶體、設施、限制挑戰</li>
               </ul>
               <button
                 type="button"
@@ -1053,7 +1076,7 @@ export default function App() {
                 disabled={!canEvolve(state)}
                 onClick={() => {
                   const ok = window.confirm(
-                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度與晶體（轉生歸零），保留星塵、裝備與挑戰。`,
+                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度、晶體與限制挑戰（轉生歸零），保留星塵與裝備。`,
                   )
                   if (ok) game.evolve()
                 }}
@@ -1064,7 +1087,7 @@ export default function App() {
             <div className="stack muted-block rebirth-challenges">
               <h3>限制挑戰</h3>
               <p className="hint rebirth-lede">
-                三線 Lv1–10×4／之後×12 · 只獎點擊／閒置／離線 · 轉生／進化保留 · 可退出
+                三線 Lv1–10×4／之後×12 · 只獎點擊／閒置／離線 · 轉生保留／進化歸零 · 可退出
               </p>
               <div className="rebirth-challenge-list">
                 {challengeOffers.map((c) => {

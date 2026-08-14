@@ -430,6 +430,25 @@ export function effectiveAffixValue(slot: GearSlot, affix: Affix): number {
   return Number((value * SECONDARY_AFFIX_FACTOR).toFixed(6))
 }
 
+/** 單件綜合戰力：各詞條 (1+效力) 互乘 */
+export function gearItemPower(item: GearItem): number {
+  let power = 1
+  for (const affix of item.affixes) {
+    power *= 1 + effectiveAffixValue(item.slot, affix)
+  }
+  const quality = item.quality ?? 1
+  return power * (0.98 + quality * 0.02)
+}
+
+/** 相對已穿戴：正數＝更強（百分比點） */
+export function gearPowerDeltaPct(item: GearItem, equipped: GearItem | null): number | null {
+  if (!equipped || equipped.id === item.id) return null
+  const a = gearItemPower(item)
+  const b = gearItemPower(equipped)
+  if (b <= 0) return null
+  return Number((((a / b) - 1) * 100).toFixed(1))
+}
+
 export function nextRarity(rarity: GearItem['rarity']): GearItem['rarity'] {
   const i = rarityIndex(rarity)
   if (i < 0) return 'common'

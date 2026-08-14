@@ -21,6 +21,8 @@ import {
   stardustInterestRate,
   sumAffix,
   ensureGearIdentity,
+  gearItemPower,
+  gearPowerDeltaPct,
 } from './state'
 import {
   craftGear,
@@ -127,6 +129,26 @@ describe('side systems', () => {
     state = { ...state, miners: 20, drillLevel: 5, ore: bn(0) }
     state = tick(state, 2)
     expect(state.ore.gt(0)).toBe(true)
+  })
+
+  it('gearItemPower ranks stronger affixes higher and delta vs equipped', () => {
+    const weak = {
+      ...rollGear('helmet', 2),
+      affixes: [{ id: 'offlineBonus' as const, label: '離線', value: 0.05 }],
+      quality: 1,
+    }
+    const strong = {
+      ...rollGear('helmet', 2),
+      id: 'helmet-strong',
+      affixes: [
+        { id: 'offlineBonus' as const, label: '離線', value: 0.2 },
+        { id: 'minePower' as const, label: '開採', value: 0.1 },
+      ],
+      quality: 1.1,
+    }
+    expect(gearItemPower(strong)).toBeGreaterThan(gearItemPower(weak))
+    expect(gearPowerDeltaPct(strong, weak)).toBeGreaterThan(0)
+    expect(gearPowerDeltaPct(weak, strong)).toBeLessThan(0)
   })
 
   it('crafted gear gets unique name, hue, variant and quality', () => {

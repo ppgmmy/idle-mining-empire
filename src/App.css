@@ -1192,11 +1192,23 @@ textarea {
 }
 
 .gear-quality,
-.gear-focus {
+.gear-focus,
+.gear-power,
+.gear-delta {
   padding: 1px 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   font-size: 0.68rem;
+}
+
+.gear-delta-up {
+  color: #7dffb3;
+  background: rgba(125, 255, 179, 0.12);
+}
+
+.gear-delta-down {
+  color: #ff9b8a;
+  background: rgba(255, 155, 138, 0.12);
 }
 
 .gear-sell-row {

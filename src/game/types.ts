@@ -13,7 +13,7 @@ export type TabId = (typeof TABS)[number]
 /** 分頁解鎖所需轉生次數 */
 export const TAB_UNLOCK_REBIRTH: Partial<Record<TabId, number>> = {
   research: 10,
-  gear: 20,
+  gear: 12,
 }
 
 export function isTabUnlocked(tab: TabId, rebirthCount: number): boolean {

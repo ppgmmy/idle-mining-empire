@@ -222,9 +222,13 @@ describe('progression', () => {
     expect(state.crystals.eq(0)).toBe(true)
     expect(state.stardust.eq(80)).toBe(true)
     expect(state.gear.length).toBe(1)
-    expect(state.challengeCleared.clickOnly).toBe(2)
-    expect(state.challengeRecords).toHaveLength(1)
-    expect(state.activeChallengeId).toBe('clickOnly-3')
+    expect(state.challengeCleared.clickOnly).toBe(0)
+    expect(state.challengeCleared.noAutomation).toBe(0)
+    expect(state.challengeCleared.halfIdle).toBe(0)
+    expect(state.challengeRecords).toHaveLength(0)
+    expect(state.activeChallengeId).toBeNull()
+    // 進化贈打造經驗
+    expect(state.craftXp + state.craftLevel).toBeGreaterThan(0)
 
     // 1000 → first × 0.95 × 1.1
     state = { ...state, rebirthCount: 1000 }
