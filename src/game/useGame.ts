@@ -36,7 +36,7 @@ import { bn, formatBN } from './bigNumber'
 import { submitLeaderboardScore } from './leaderboard'
 import { calcRebirthPayout, createInitialState } from './state'
 import { loadGame, saveGame } from './save'
-import type { FacilityId, GameState, GearSlot, TabId } from './types'
+import type { FacilityId, GameState, GearItem, GearSlot, TabId } from './types'
 import { TICK_MS } from './types'
 
 const LEADERBOARD_SYNC_MS = 60_000
@@ -248,12 +248,13 @@ export function useGame() {
     buyFacilityTimes: (id: FacilityId, times: number) =>
       runBuyChunks((s, n) => buyFacilityTimes(s, id, n), times),
     buyResearch: (id: string) => commit((s) => buyResearch(s, id)),
-    craftGear: (): { id: string; slot: GearSlot } | null => {
-      const beforeLen = stateRef.current.gear.length
+    craftGear: (): GearItem | null => {
+      const beforeIds = new Set(stateRef.current.gear.map((g) => g.id))
       commit((s) => craftGear(s))
-      const item = stateRef.current.gear[stateRef.current.gear.length - 1]
-      if (stateRef.current.gear.length <= beforeLen || !item) return null
-      return { id: item.id, slot: item.slot }
+      const item = stateRef.current.gear.find((g) => !beforeIds.has(g.id))
+      if (!item) return null
+      flushNow()
+      return item
     },
     equipGear: (gearId: string) => commit((s) => equipGear(s, gearId)),
     unequipGear: (gearId: string) => commit((s) => unequipGear(s, gearId)),

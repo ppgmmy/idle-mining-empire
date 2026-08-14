@@ -1408,6 +1408,9 @@ textarea {
 .gear-doll-icon {
   font-size: 1.25rem;
   line-height: 1.2;
+  display: grid;
+  place-items: center;
+  min-height: 36px;
 }
 
 .gear-doll-label {
@@ -2058,9 +2061,16 @@ textarea {
 }
 
 .gear-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.gear-card-portrait {
+  display: inline-grid;
 }
 
 .gear-sub {
@@ -2346,5 +2356,425 @@ textarea {
 @media (min-width: 720px) {
   .app-shell {
     padding-top: 24px;
+  }
+}
+
+/* —— 裝備肖像：槽位造型 + 稀有度華麗 —— */
+.gear-portrait {
+  --gp-size: 48px;
+  position: relative;
+  width: var(--gp-size);
+  height: var(--gp-size);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.gear-portrait-sm {
+  --gp-size: 36px;
+}
+
+.gear-portrait-md {
+  --gp-size: 52px;
+}
+
+.gear-portrait-lg {
+  --gp-size: 112px;
+}
+
+.gear-portrait-ring,
+.gear-portrait-orbit,
+.gear-portrait-spark,
+.gear-portrait-shape,
+.gear-portrait-glyph {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  pointer-events: none;
+}
+
+.gear-portrait-ring {
+  width: 92%;
+  height: 92%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 55%, transparent);
+  opacity: 0.35;
+}
+
+.gear-portrait-tier-1 .gear-portrait-ring {
+  opacity: 0.55;
+  box-shadow: inset 0 0 10px color-mix(in srgb, var(--gp-accent) 28%, transparent);
+}
+
+.gear-portrait-tier-2 .gear-portrait-ring {
+  opacity: 0.75;
+  border-width: 2px;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--gp-accent) 30%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--gp-accent) 35%, transparent);
+}
+
+.gear-portrait-tier-3 .gear-portrait-ring,
+.gear-portrait-tier-4 .gear-portrait-ring {
+  opacity: 1;
+  border-width: 2px;
+  background: conic-gradient(
+    from 20deg,
+    transparent 0 40%,
+    color-mix(in srgb, var(--gp-accent) 40%, transparent) 50%,
+    transparent 60% 100%
+  );
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  animation: gp-spin 8s linear infinite;
+}
+
+.gear-portrait-orbit {
+  width: 108%;
+  height: 108%;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--gp-accent) 50%, transparent);
+  opacity: 0;
+}
+
+.gear-portrait-tier-3 .gear-portrait-orbit,
+.gear-portrait-tier-4 .gear-portrait-orbit {
+  opacity: 0.55;
+  animation: gp-spin-rev 14s linear infinite;
+}
+
+.gear-portrait-spark {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gp-accent);
+  opacity: 0;
+  box-shadow: 0 0 8px var(--gp-accent);
+}
+
+.gear-portrait-tier-2 .gear-portrait-spark,
+.gear-portrait-tier-3 .gear-portrait-spark,
+.gear-portrait-tier-4 .gear-portrait-spark {
+  opacity: calc(0.35 + var(--gp-shine));
+}
+
+.gear-portrait-spark-a {
+  transform: translate(-42%, -38%);
+}
+
+.gear-portrait-spark-b {
+  transform: translate(46%, -28%);
+  width: 3px;
+  height: 3px;
+}
+
+.gear-portrait-spark-c {
+  transform: translate(8%, 44%);
+  width: 4px;
+  height: 4px;
+}
+
+.gear-portrait-tier-3 .gear-portrait-spark-a,
+.gear-portrait-tier-4 .gear-portrait-spark-a {
+  animation: gp-twinkle 1.8s ease-in-out infinite;
+}
+
+.gear-portrait-tier-3 .gear-portrait-spark-b,
+.gear-portrait-tier-4 .gear-portrait-spark-b {
+  animation: gp-twinkle 2.2s ease-in-out 0.4s infinite;
+}
+
+.gear-portrait-tier-4 .gear-portrait-spark-c {
+  animation: gp-twinkle 1.6s ease-in-out 0.8s infinite;
+}
+
+.gear-portrait-shape {
+  width: 68%;
+  height: 68%;
+  display: grid;
+  place-items: center;
+}
+
+.gear-portrait-shape-core,
+.gear-portrait-shape-detail,
+.gear-portrait-shape-ornament {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.gear-portrait-shape-core {
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--gp-accent) 78%, #1a1208) 0%,
+    color-mix(in srgb, var(--gp-accent) 35%, #0c121c) 55%,
+    color-mix(in srgb, hsl(var(--gp-hue) 40% 22%) 70%, #0a0e14) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff calc(18% + var(--gp-shine) * 40%), transparent),
+    0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.gear-portrait-tier-2 .gear-portrait-shape-core,
+.gear-portrait-tier-3 .gear-portrait-shape-core,
+.gear-portrait-tier-4 .gear-portrait-shape-core {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff calc(28% + var(--gp-shine) * 50%), transparent),
+    0 0 16px color-mix(in srgb, var(--gp-accent) 35%, transparent),
+    0 6px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* 槽位剪影 */
+.gear-portrait-slot-helmet .gear-portrait-shape-core {
+  width: 78%;
+  height: 72%;
+  border-radius: 46% 46% 18% 18% / 55% 55% 28% 28%;
+  top: 4%;
+}
+
+.gear-portrait-slot-mask .gear-portrait-shape-core {
+  width: 72%;
+  height: 78%;
+  border-radius: 42% 42% 36% 36% / 38% 38% 48% 48%;
+}
+
+.gear-portrait-slot-earring .gear-portrait-shape-core {
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  top: -8%;
+}
+
+.gear-portrait-slot-earring .gear-portrait-shape-detail {
+  width: 18%;
+  height: 42%;
+  top: 28%;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--gp-accent) 70%, #fff),
+    color-mix(in srgb, var(--gp-accent) 40%, #1a1208)
+  );
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gear-portrait-slot-armor .gear-portrait-shape-core {
+  width: 76%;
+  height: 78%;
+  border-radius: 18% 18% 28% 28% / 14% 14% 36% 36%;
+  clip-path: polygon(18% 8%, 82% 8%, 94% 28%, 88% 92%, 12% 92%, 6% 28%);
+}
+
+.gear-portrait-slot-gloves .gear-portrait-shape-core {
+  width: 70%;
+  height: 70%;
+  border-radius: 40% 48% 36% 42% / 46% 40% 48% 42%;
+  transform: rotate(-12deg);
+}
+
+.gear-portrait-slot-belt .gear-portrait-shape-core {
+  width: 88%;
+  height: 34%;
+  border-radius: 10px;
+  top: 8%;
+}
+
+.gear-portrait-slot-belt .gear-portrait-shape-detail {
+  width: 28%;
+  height: 42%;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gp-accent) 65%, #d6ba78);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 25%, transparent);
+}
+
+.gear-portrait-slot-boots .gear-portrait-shape-core {
+  width: 58%;
+  height: 72%;
+  border-radius: 28% 40% 18% 36% / 18% 22% 48% 52%;
+  left: 6%;
+  transform: rotate(8deg);
+}
+
+.gear-portrait-shape-ornament {
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  background:
+    radial-gradient(
+      circle at 30% 25%,
+      color-mix(in srgb, #fff calc(var(--gp-shine) * 80%), transparent),
+      transparent 42%
+    );
+}
+
+.gear-portrait-tier-1 .gear-portrait-shape-ornament {
+  opacity: 0.55;
+}
+
+.gear-portrait-tier-2 .gear-portrait-shape-ornament,
+.gear-portrait-tier-3 .gear-portrait-shape-ornament,
+.gear-portrait-tier-4 .gear-portrait-shape-ornament {
+  opacity: 1;
+}
+
+.gear-portrait-tier-3 .gear-portrait-shape-ornament::after,
+.gear-portrait-tier-4 .gear-portrait-shape-ornament::after {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 45%, transparent);
+  border-radius: inherit;
+  opacity: 0.7;
+}
+
+.gear-portrait-glyph {
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: calc(var(--gp-size) * 0.34);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+
+.gear-portrait-lg .gear-portrait-glyph {
+  font-size: calc(var(--gp-size) * 0.3);
+}
+
+.gear-portrait-reveal {
+  animation: gp-reveal-pop 0.55s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+}
+
+@keyframes gp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gp-spin-rev {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes gp-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes gp-reveal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.craft-reveal {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  margin: 10px 0 14px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--craft-accent, var(--line)) 55%, var(--line));
+  background:
+    radial-gradient(
+      120% 80% at 12% 0%,
+      color-mix(in srgb, var(--craft-accent, #d6ba78) 22%, transparent),
+      transparent 55%
+    ),
+    rgba(255, 255, 255, 0.04);
+  animation: craft-reveal-in 0.4s ease-out both;
+}
+
+.craft-reveal-body {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.craft-reveal-eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.craft-reveal-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.craft-reveal-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.craft-reveal-affixes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.craft-reveal-affixes li {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.craft-reveal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+@keyframes craft-reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 520px) {
+  .craft-reveal {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .craft-reveal-meta,
+  .craft-reveal-actions {
+    justify-content: center;
+  }
+
+  .craft-reveal-affixes li {
+    justify-content: center;
+    gap: 12px;
   }
 }

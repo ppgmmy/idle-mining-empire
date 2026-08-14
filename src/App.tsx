@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { LeaderboardPanel } from './components/LeaderboardPanel'
+import { GearPortrait } from './components/GearPortrait'
 import { MineCanvas } from './components/MineCanvas'
 import { ResourceBar } from './components/ResourceBar'
 import { TabNav } from './components/TabNav'
@@ -53,7 +54,6 @@ import {
   stardustInterestRate,
   ensureGearIdentity,
   gearAccent,
-  gearIcon,
   qualityLabel,
 } from './game/state'
 import { canAccessTab } from './game/admin'
@@ -64,6 +64,7 @@ import {
   RARITY_ORDER,
   rarityTierNumber,
   SLOT_META,
+  type GearItem,
   type GearSlot,
 } from './game/types'
 import { useGame } from './game/useGame'
@@ -77,6 +78,7 @@ export default function App() {
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
   const [challengeLogOpen, setChallengeLogOpen] = useState(false)
   const [gearFilter, setGearFilter] = useState<GearSlot | null>(null)
+  const [craftReveal, setCraftReveal] = useState<GearItem | null>(null)
   const { state } = game
   const challengeOffers = listChallengeOffers(state)
   const activeChallenge = getActiveChallenge(state)
@@ -612,7 +614,11 @@ export default function App() {
                     onClick={() => selectGearSlot(slot)}
                   >
                     <span className="gear-doll-icon" aria-hidden>
-                      {shown ? gearIcon(shown) : '·'}
+                      {shown ? (
+                        <GearPortrait item={shown} size="sm" />
+                      ) : (
+                        '·'
+                      )}
                     </span>
                     <span className="gear-doll-label">
                       {SLOT_META[slot].label}
@@ -669,7 +675,7 @@ export default function App() {
                     disabled={!canCraft || !canAfford}
                     onClick={() => {
                       const made = game.craftGear()
-                      if (made) setGearFilter(made.slot)
+                      if (made) setCraftReveal(ensureGearIdentity(made))
                     }}
                   >
                     打造裝備
@@ -685,6 +691,77 @@ export default function App() {
                 </div>
               )
             })()}
+            {craftReveal ? (
+              <div
+                className="craft-reveal"
+                style={
+                  {
+                    '--craft-accent': gearAccent(craftReveal),
+                  } as CSSProperties
+                }
+                role="status"
+                aria-live="polite"
+              >
+                <GearPortrait item={craftReveal} size="lg" reveal />
+                <div className="craft-reveal-body">
+                  <p className="craft-reveal-eyebrow">打造完成</p>
+                  <h3 className="craft-reveal-title">{craftReveal.name}</h3>
+                  <p className="craft-reveal-meta">
+                    <span>{SLOT_META[craftReveal.slot].label}</span>
+                    <span className="rarity-inline">
+                      <span
+                        className="rarity-dot"
+                        style={{ background: gearAccent(craftReveal) }}
+                      />
+                      {RARITY_LABEL[craftReveal.rarity]}
+                    </span>
+                    <span className="gear-quality">
+                      {qualityLabel(craftReveal.quality)}
+                    </span>
+                    <span className="gear-power">
+                      戰力 ×{gearItemPower(craftReveal).toFixed(2)}
+                    </span>
+                  </p>
+                  <ul className="craft-reveal-affixes">
+                    {craftReveal.affixes.map((affix) => {
+                      const primary = isSlotPrimary(craftReveal.slot, affix.id)
+                      const shown = effectiveAffixValue(craftReveal.slot, affix)
+                      return (
+                        <li key={`${craftReveal.id}-${affix.id}-${affix.value}`}>
+                          <span>
+                            {primary ? '主 · ' : '副 · '}
+                            {AFFIX_META[affix.id].label}
+                          </span>
+                          <span>{formatAffixMult(shown)}</span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <div className="craft-reveal-actions">
+                    {state.equipped[craftReveal.slot] === craftReveal.id ? (
+                      <button type="button" className="secondary-btn" disabled>
+                        已自動穿戴
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => game.equipGear(craftReveal.id)}
+                      >
+                        穿戴
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      onClick={() => setCraftReveal(null)}
+                    >
+                      收起
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {!canCraftGear(state) ? (
               <p className="hint">已達打造上限（最多 {gearCapacity(state)} 件），請先賣出或丟棄。</p>
             ) : null}
@@ -764,13 +841,7 @@ export default function App() {
                         <div className="gear-card-head">
                           <h3>
                             <span className="gear-name">
-                              <span
-                                className="gear-icon"
-                                style={{ background: `${accent}22` }}
-                                aria-hidden
-                              >
-                                {gearIcon(item)}
-                              </span>
+                              <GearPortrait item={item} size="sm" className="gear-card-portrait" />
                               {isEquipped ? '● ' : ''}
                               {item.name}
                             </span>
