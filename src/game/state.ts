@@ -265,11 +265,11 @@ const AFFIX_POOL: Array<{ id: AffixId; label: string }> = [
   { id: 'offlineBonus', label: AFFIX_META.offlineBonus.label },
 ]
 
-/** 普通起始升幅 1%；之後每階 ×115%（稀有度差保留，但整體升幅較溫和） */
-export const AFFIX_TIER0_GAIN = 0.01
-export const AFFIX_TIER_GROWTH = 1.15
+/** 普通起始升幅 1.05%；之後每階 ×118%（略高於 1%/×1.15） */
+export const AFFIX_TIER0_GAIN = 0.0105
+export const AFFIX_TIER_GROWTH = 1.18
 /** 同階隨機上限：略低於下階底，保證本階最高 < 下階最低 */
-const AFFIX_WITHIN_TIER_SPREAD = 1.1
+const AFFIX_WITHIN_TIER_SPREAD = 1.12
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
@@ -287,7 +287,7 @@ export function affixCount(rarity: Rarity): number {
   return 4
 }
 
-/** 第 i 階基準升幅：1% × 1.15^i */
+/** 第 i 階基準升幅：1.05% × 1.18^i */
 export function affixTierBaseGain(rarity: Rarity): number {
   const i = Math.max(0, rarityIndex(rarity))
   return AFFIX_TIER0_GAIN * Math.pow(AFFIX_TIER_GROWTH, i)
