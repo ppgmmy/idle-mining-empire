@@ -12,9 +12,11 @@ import type {
   ChallengeRecord,
   ChallengeRule,
   GameState,
+  GearItem,
+  GearSlot,
   SerializedGameState,
 } from './types'
-import { SAVE_KEY } from './types'
+import { GEAR_SLOTS, LEGACY_SLOT_MAP, SAVE_KEY } from './types'
 
 function serialize(state: GameState): SerializedGameState {
   const { challenges: _legacy, ...rest } = state
@@ -135,15 +137,50 @@ function migrateResearchLevels(raw: SerializedGameState & { researchOwned?: stri
   return levels
 }
 
+function migrateGear(
+  rawGear: GearItem[] | undefined,
+  rawEquipped: Partial<Record<string, string>> | undefined,
+): { gear: GearItem[]; equipped: Partial<Record<GearSlot, string>> } {
+  const valid = new Set<string>(GEAR_SLOTS)
+  const gear = (rawGear ?? []).map((item) => {
+    const slot = (
+      valid.has(item.slot) ? item.slot : LEGACY_SLOT_MAP[item.slot] ?? item.slot
+    ) as GearSlot
+    return { ...item, slot }
+  }).filter((item) => valid.has(item.slot))
+
+  const idSet = new Set(gear.map((g) => g.id))
+  const equipped: Partial<Record<GearSlot, string>> = {}
+  for (const [rawSlot, id] of Object.entries(rawEquipped ?? {})) {
+    if (!id || !idSet.has(id)) continue
+    const slot = (valid.has(rawSlot) ? rawSlot : LEGACY_SLOT_MAP[rawSlot]) as
+      | GearSlot
+      | undefined
+    if (!slot || !valid.has(slot)) continue
+    const item = gear.find((g) => g.id === id)
+    if (!item || item.slot !== slot) continue
+    equipped[slot] = id
+  }
+  return { gear, equipped }
+}
+
 function deserialize(raw: SerializedGameState): GameState {
   const base = createInitialState(raw.lastSaveAt ?? Date.now())
   const researchLevels = migrateResearchLevels(raw as SerializedGameState & { researchOwned?: string[] })
   const macrosUnlocked =
     raw.macrosUnlocked ||
     Object.entries(researchLevels).some(([id, lv]) => id === 'macro-kernel' && lv >= 1)
+
+  // 舊「巨集核心」／macrosUnlocked → 三個自動化研究各 Lv1（顯示已解鎖，唔使再用礦石重買）
+  if (macrosUnlocked || (researchLevels['macro-kernel'] ?? 0) >= 1) {
+    for (const id of ['auto-miner', 'auto-buy-drill', 'auto-rebirth'] as const) {
+      researchLevels[id] = Math.max(researchLevels[id] ?? 0, 1)
+    }
+  }
   const { challengeCleared, challengeRecords } = migrateChallengeProgress(
     raw as SerializedGameState & { challenges?: Challenge[] },
   )
+  const { gear, equipped } = migrateGear(raw.gear, raw.equipped)
 
   const { challenges: _drop, ...rawRest } = raw as SerializedGameState & {
     challenges?: Challenge[]
@@ -163,6 +200,8 @@ function deserialize(raw: SerializedGameState): GameState {
     totalOreEarned: parseBN(raw.totalOreEarned),
     researchLevels,
     macrosUnlocked,
+    gear,
+    equipped,
     facilities: {
       ...base.facilities,
       ...((raw as { facilities?: Partial<GameState['facilities']> }).facilities ?? {}),
@@ -172,7 +211,13 @@ function deserialize(raw: SerializedGameState): GameState {
     automations: migrateAutomations(raw.automations, base.automations),
     bossKills: raw.bossKills ?? 0,
     evolutionCount: Math.max(0, Number(raw.evolutionCount ?? 0) || 0),
-    evolutionPower: parseBN(raw.evolutionPower, 0),
+    evolutionPower: (() => {
+      const count = Math.max(0, Number(raw.evolutionCount ?? 0) || 0)
+      const p = parseBN(raw.evolutionPower, 0)
+      // 舊存檔存加成部份（＜1）→ 轉成完整倍率
+      if (count > 0 && p.gt(0) && p.lt(1)) return bn(1).add(p)
+      return p
+    })(),
     bossSpawnLockUntil: Math.max(
       0,
       Number(

@@ -134,9 +134,34 @@ describe('progression', () => {
     expect(state.researchLevels['pulse-click']).toBe(2)
     expect(state.crystals.lt(afterFirst)).toBe(true)
 
-    state = buyResearch(state, 'macro-kernel')
-    expect(state.macrosUnlocked).toBe(true)
+    state = { ...state, ore: bn(1e6) }
+    state = buyResearch(state, 'auto-miner')
+    expect(state.researchLevels['auto-miner']).toBe(1)
+    expect(state.automations.find((a) => a.kind === 'autoMiner')?.enabled).toBe(
+      true,
+    )
     expect(sumAffix(state, 'clickMult')).toBeGreaterThan(0)
+  })
+
+  it('automation research spends ore and unlocks switches', () => {
+    let state = createInitialState()
+    state = { ...state, ore: bn(200_000) }
+
+    state = buyResearch(state, 'auto-miner')
+    expect(state.researchLevels['auto-miner']).toBe(1)
+    expect(state.ore.eq(bn(192_000))).toBe(true)
+
+    state = buyResearch(state, 'auto-buy-drill')
+    expect(state.researchLevels['auto-buy-drill']).toBe(1)
+    expect(state.ore.eq(bn(167_000))).toBe(true)
+
+    state = buyResearch(state, 'auto-rebirth')
+    expect(state.researchLevels['auto-rebirth']).toBe(1)
+    expect(state.ore.eq(bn(87_000))).toBe(true)
+    // maxLevel 1：再買無效
+    const oreBefore = state.ore
+    state = buyResearch(state, 'auto-rebirth')
+    expect(state.ore.eq(oreBefore)).toBe(true)
   })
 
   it('offline gains respect time and stay finite', () => {
@@ -148,12 +173,13 @@ describe('progression', () => {
     expect(bn(result.gainedOre).gt(0)).toBe(true)
   })
 
-  it('evolve adds then multiplies power from rebirth/10000', () => {
+  it('evolve applies 0.95 decay then (1 + rebirth/10000)', () => {
     expect(canEvolve(createInitialState())).toBe(false)
     let state = createInitialState()
+    // 625 → 1 × 0.95 × 1.0625
     state = {
       ...state,
-      rebirthCount: EVOLUTION_UNLOCK_REBIRTH,
+      rebirthCount: 625,
       rebirthMult: bn(10),
       crystals: bn(500),
       stardust: bn(80),
@@ -162,33 +188,57 @@ describe('progression', () => {
         {
           id: 'g1',
           name: 't',
-          slot: 'pick',
+          slot: 'gloves',
           rarity: 'common',
           affixes: [{ id: 'clickMult', label: '點擊', value: 0.1 }],
         },
       ],
+      equipped: { gloves: 'g1' },
     }
     expect(canEvolve(state)).toBe(true)
-    // 0→1：加 25/10000
+    state = {
+      ...state,
+      challengeCleared: { clickOnly: 2, noAutomation: 0, halfIdle: 0 },
+      challengeRecords: [
+        {
+          id: 'clickOnly-1',
+          rule: 'clickOnly',
+          level: 1,
+          name: '徒手鑿脈 Lv1',
+          goalOre: 40_000,
+          reward: { label: 't', affix: { clickMult: 0.01 } },
+          clearedAt: 1,
+        },
+      ],
+      activeChallengeId: 'clickOnly-3',
+    }
+    const first = bn(1)
+      .mul(bn(0.95))
+      .mul(bn(1).add(bn(625).div(10_000)))
     state = doEvolve(state)
     expect(state.evolutionCount).toBe(1)
-    expect(state.evolutionPower.eq(bn(25).div(10_000))).toBe(true)
-    expect(evolutionMult(state).eq(bn(1).add(bn(25).div(10_000)))).toBe(true)
+    expect(state.evolutionPower.eq(first)).toBe(true)
+    expect(evolutionMult(state).eq(first)).toBe(true)
     expect(state.rebirthCount).toBe(0)
-    expect(state.crystals.eq(500)).toBe(true)
+    expect(state.crystals.eq(0)).toBe(true)
     expect(state.stardust.eq(80)).toBe(true)
-    expect(state.gear.length).toBe(0)
+    expect(state.gear.length).toBe(1)
+    expect(state.challengeCleared.clickOnly).toBe(2)
+    expect(state.challengeRecords).toHaveLength(1)
+    expect(state.activeChallengeId).toBe('clickOnly-3')
 
-    // 1→2：相乘（再 25 轉）
-    state = { ...state, rebirthCount: EVOLUTION_UNLOCK_REBIRTH }
-    const prevPower = state.evolutionPower
+    // 1000 → first × 0.95 × 1.1
+    state = { ...state, rebirthCount: 1000 }
+    const expected = first
+      .mul(bn(0.95))
+      .mul(bn(1).add(bn(1000).div(10_000)))
     state = doEvolve(state)
     expect(state.evolutionCount).toBe(2)
-    expect(state.evolutionPower.eq(prevPower.mul(bn(25).div(10_000)))).toBe(true)
+    expect(state.evolutionPower.eq(expected)).toBe(true)
+    expect(evolutionMult(state).eq(expected)).toBe(true)
     const noEvo = { ...state, evolutionCount: 0, evolutionPower: bn(0) }
-    expect(getClickGain(state).eq(getClickGain(noEvo).mul(evolutionMult(state)))).toBe(
-      true,
-    )
+    const ratio = getClickGain(state).div(getClickGain(noEvo))
+    expect(ratio.sub(evolutionMult(state)).abs().lt(1e-9)).toBe(true)
   })
 
   it('auto-rebirth triggers on tick when enabled and canRebirth', () => {
@@ -198,6 +248,7 @@ describe('progression', () => {
       totalOreEarned: bn(2000),
       ore: bn(2000),
       miners: 3,
+      researchLevels: { 'auto-rebirth': 1 },
       automations: state.automations.map((a) =>
         a.kind === 'autoRebirth' ? { ...a, enabled: true } : a,
       ),

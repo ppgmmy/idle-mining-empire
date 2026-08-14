@@ -21,7 +21,7 @@ import {
   stardustInterestRate,
   sumAffix,
 } from './state'
-import { craftGear, mineClick, rerollGear, startChallenge, tick } from './actions'
+import { craftGear, mineClick, rerollGear, sellUnequippedGear, startChallenge, abandonChallenge, tick } from './actions'
 import { bn } from './bigNumber'
 import { RARITY_ORDER } from './types'
 
@@ -36,9 +36,24 @@ describe('side systems', () => {
     expect(getClickGain(state).gt(0)).toBe(true)
   })
 
-  it('clearing half-idle challenge raises rebirth interest rates', () => {
+  it('can abandon an active challenge without rewards', () => {
+    let state = createInitialState()
+    state = { ...state, rebirthCount: 1, crystals: bn(10), stardust: bn(3) }
+    state = startChallenge(state, 'clickOnly-1')
+    expect(state.activeChallengeId).toBe('clickOnly-1')
+    state = abandonChallenge(state)
+    expect(state.activeChallengeId).toBeNull()
+    expect(state.crystals.eq(10)).toBe(true)
+    expect(state.stardust.eq(3)).toBe(true)
+    expect(state.challengeCleared.clickOnly).toBe(0)
+  })
+
+  it('clearing half-idle challenge only grants offline affix, not interest', () => {
     let state = createInitialState()
     const offer = buildChallengeOffer('halfIdle', 1)
+    expect(offer.reward.crystalInterest).toBeUndefined()
+    expect(offer.reward.stardustInterest).toBeUndefined()
+    expect(offer.reward.affix?.offlineBonus).toBeGreaterThan(0)
     state = {
       ...state,
       rebirthCount: 5,
@@ -56,19 +71,25 @@ describe('side systems', () => {
         },
       ],
     }
-    expect(crystalInterestRate(state)).toBeCloseTo(
-      0.05 + (offer.reward.crystalInterest ?? 0),
-      5,
-    )
-    expect(stardustInterestRate(state)).toBeCloseTo(
-      0.03 + (offer.reward.stardustInterest ?? 0),
-      5,
-    )
+    expect(crystalInterestRate(state).toNumber()).toBeCloseTo(0.05, 5)
+    expect(stardustInterestRate(state).toNumber()).toBeCloseTo(0.03, 5)
   })
 
-  it('challenge goals scale steeply and clear writes permanent record', () => {
-    expect(challengeGoalOre('clickOnly', 2)).toBe(challengeGoalOre('clickOnly', 1) * 4)
-    expect(challengeGoalOre('clickOnly', 3)).toBe(challengeGoalOre('clickOnly', 1) * 16)
+  it('challenge goals scale ×4 then steeply after lv10', () => {
+    expect(
+      challengeGoalOre('clickOnly', 2).eq(challengeGoalOre('clickOnly', 1).mul(4)),
+    ).toBe(true)
+    expect(
+      challengeGoalOre('clickOnly', 3).eq(challengeGoalOre('clickOnly', 1).mul(16)),
+    ).toBe(true)
+    expect(
+      challengeGoalOre('clickOnly', 11).eq(challengeGoalOre('clickOnly', 10).mul(12)),
+    ).toBe(true)
+    expect(
+      challengeGoalOre('clickOnly', 12).eq(
+        challengeGoalOre('clickOnly', 10).mul(12).mul(12),
+      ),
+    ).toBe(true)
 
     let state = createInitialState()
     state = { ...state, rebirthCount: 1, clickPower: bn(1e6), ore: bn(1234) }
@@ -100,13 +121,18 @@ describe('side systems', () => {
   it('has 21 rarity tiers and can climb to genesis', () => {
     expect(RARITY_ORDER).toHaveLength(21)
     const item = {
-      ...rollGear('pick'),
+      ...rollGear('gloves'),
       rarity: 'common' as const,
-      affixes: rollGear('pick').affixes,
+      affixes: rollGear('gloves').affixes,
       rerolls: 0,
     }
     let state = createInitialState()
-    state = { ...state, crystals: bn(1e6), gear: [item], equipped: { pick: item.id } }
+    state = {
+      ...state,
+      crystals: bn('1e40'),
+      gear: [item],
+      equipped: { gloves: item.id },
+    }
 
     for (let i = 1; i < RARITY_ORDER.length; i++) {
       state = rerollGear(state, item.id)
@@ -133,7 +159,7 @@ describe('side systems', () => {
     }
 
     for (const rarity of ['common', 'rare', 'epic', 'genesis'] as const) {
-      const rolled = rollAffixes(rarity, 'pick')
+      const rolled = rollAffixes(rarity, 'gloves')
       for (const affix of rolled) {
         expect(affix.value).toBeGreaterThan(0)
       }
@@ -143,35 +169,62 @@ describe('side systems', () => {
 
   it('rarity upgrade multiplies existing affix instead of replacing', () => {
     const item = {
-      ...rollGear('pick', 1),
+      ...rollGear('gloves', 1),
       rarity: 'common' as const,
       affixes: [{ id: 'clickMult' as const, label: '點擊倍率', value: 0.01 }],
       rerolls: 0,
     }
     let state = createInitialState()
-    state = { ...state, crystals: bn(1e6), gear: [item], equipped: { pick: item.id } }
+    state = {
+      ...state,
+      crystals: bn(1e6),
+      gear: [item],
+      equipped: { gloves: item.id },
+    }
     state = rerollGear(state, item.id)
     expect(state.gear[0].rarity).toBe('rare')
     expect(state.gear[0].affixes[0].value).toBeGreaterThan(0.01)
     expect(state.gear[0].affixes.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('all inventory gear affixes multiply without equipping', () => {
+  it('only equipped gear affixes apply; unequipped do nothing', () => {
     const a = {
-      ...rollGear('pick'),
+      ...rollGear('gloves'),
       id: 'g1',
       affixes: [{ id: 'clickMult' as const, label: '點擊倍率', value: 0.5 }],
     }
     const b = {
-      ...rollGear('suit'),
+      ...rollGear('armor'),
       id: 'g2',
-      // suit 主詞條唔包括 clickMult → 副詞條只計 50%
+      // armor 主詞條唔包括 clickMult → 副詞條只計 50%
       affixes: [{ id: 'clickMult' as const, label: '點擊倍率', value: 0.5 }],
     }
     let state = createInitialState()
     state = { ...state, gear: [a, b], equipped: {} }
+    expect(sumAffix(state, 'clickMult')).toBeCloseTo(0)
+
+    state = { ...state, equipped: { gloves: 'g1' } }
+    expect(sumAffix(state, 'clickMult')).toBeCloseTo(0.5)
+
+    state = { ...state, equipped: { gloves: 'g1', armor: 'g2' } }
     // (1+0.5)×(1+0.25)=1.875 → sumAffix 等價倍率−1
     expect(sumAffix(state, 'clickMult')).toBeCloseTo(0.875)
+  })
+
+  it('sellUnequippedGear keeps equipped and refunds stardust', () => {
+    const a = { ...rollGear('gloves'), id: 'g1', rarity: 'common' as const }
+    const b = { ...rollGear('armor'), id: 'g2', rarity: 'common' as const }
+    let state = createInitialState()
+    state = {
+      ...state,
+      gear: [a, b],
+      equipped: { gloves: 'g1' },
+      stardust: bn(0),
+    }
+    state = sellUnequippedGear(state)
+    expect(state.gear).toHaveLength(1)
+    expect(state.gear[0].id).toBe('g1')
+    expect(state.stardust.gt(0)).toBe(true)
   })
 
   it('research has exactly one upgrade slot per combat affix type', () => {
@@ -196,7 +249,7 @@ describe('side systems', () => {
 
   it('research levels, challenge and gear all multiply together', () => {
     const gear = {
-      ...rollGear('pick'),
+      ...rollGear('gloves'),
       id: 'g1',
       affixes: [{ id: 'clickMult' as const, label: '點擊倍率', value: 0.5 }],
     }
@@ -207,6 +260,7 @@ describe('side systems', () => {
       ...state,
       researchLevels: { 'pulse-click': 2 },
       gear: [gear],
+      equipped: { gloves: 'g1' },
       challengeRecords: [
         {
           id: 'clickOnly-1',
@@ -223,12 +277,18 @@ describe('side systems', () => {
       ],
     }
     // Π(1+per×GROWTH^k) for k=0..1 × (1+0.2) × (1+0.5)
-    const expected = researchNodeMult(node, 2, 'clickMult') * 1.2 * 1.5
-    expect(getAffixMult(state, 'clickMult')).toBeCloseTo(expected, 8)
-    expect(researchNodeMult(node, 2, 'clickMult')).toBeCloseTo(
-      (1 + per) * (1 + per * RESEARCH_LEVEL_GAIN_GROWTH),
-      8,
-    )
+    const expected = researchNodeMult(node, 2, 'clickMult')
+      .mul(1.2)
+      .mul(1.5)
+    expect(
+      getAffixMult(state, 'clickMult').sub(expected).abs().lt(1e-9),
+    ).toBe(true)
+    expect(
+      researchNodeMult(node, 2, 'clickMult')
+        .sub(bn(1 + per).mul(1 + per * RESEARCH_LEVEL_GAIN_GROWTH))
+        .abs()
+        .lt(1e-9),
+    ).toBe(true)
   })
 
   it('craft level XP thresholds rise and crafting levels up', () => {
@@ -255,14 +315,14 @@ describe('side systems', () => {
     let state = createInitialState()
     state = {
       ...state,
-      stardust: bn(100),
+      stardust: bn(200),
       rebirthCount: 20,
       craftLevel: 1,
       craftXp: 0,
     }
     const beforeLevel = state.craftLevel
     const beforeXp = state.craftXp
-    state = craftGear(state, 'pick')
+    state = craftGear(state, 'gloves')
     expect(state.gear).toHaveLength(1)
     expect(state.craftLevel > beforeLevel || state.craftXp > beforeXp).toBe(true)
   })

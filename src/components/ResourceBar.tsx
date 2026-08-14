@@ -26,18 +26,18 @@ export function ResourceBar({ state }: Props) {
           kind="crystal"
           label="晶體"
           value={formatBN(state.crystals)}
-          hint={`息 ${Math.round(crystalInterestRate(state) * 100)}%/轉`}
+          hint={`息 ${formatBN(crystalInterestRate(state).mul(100))}%/轉`}
         />
         <Resource
           kind="stardust"
           label="星塵"
           value={formatBN(state.stardust)}
-          hint={`息 ${Math.round(stardustInterestRate(state) * 100)}%/轉`}
+          hint={`息 ${formatBN(stardustInterestRate(state).mul(100))}%/轉`}
         />
         <Resource
           kind="rebirth"
           label="轉生"
-          value={String(state.rebirthCount)}
+          value={`${state.rebirthCount}  (x ${formatBN(state.rebirthMult)})`}
           hint={
             (state.evolutionCount ?? 0) > 0 ? (
               <>
@@ -45,9 +45,7 @@ export function ResourceBar({ state }: Props) {
                 <br />
                 ×{formatBN(evolutionMult(state))}
               </>
-            ) : (
-              `×${formatBN(state.rebirthMult)}`
-            )
+            ) : undefined
           }
         />
       </div>

@@ -95,7 +95,7 @@ textarea {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  align-items: baseline;
+  align-items: center;
   font-size: 0.78rem;
   line-height: 1.25;
 }
@@ -107,6 +107,7 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1 1 auto;
 }
 
 .challenge-progress-nums {
@@ -114,6 +115,28 @@ textarea {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.challenge-abandon-btn {
+  flex-shrink: 0;
+  border: 1px solid rgba(214, 186, 120, 0.35);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.challenge-abandon-btn:hover {
+  border-color: rgba(240, 180, 41, 0.55);
+  color: var(--accent);
+}
+
+.challenge-offer-row {
+  display: grid;
+  gap: 6px;
 }
 
 .challenge-progress-track {
@@ -1059,6 +1082,19 @@ textarea {
   margin-bottom: 12px;
 }
 
+.craft-slot-grid {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+
+.gear-sell-row {
+  grid-template-columns: 1fr;
+  margin-bottom: 10px;
+}
+
+.gear-card-equipped {
+  background: rgba(87, 199, 178, 0.08);
+}
+
 .secondary-btn {
   border-radius: 12px;
   padding: 10px 8px;
@@ -1160,7 +1196,8 @@ textarea {
   font-weight: 700;
 }
 
-.research-branch {
+.research-branch,
+.research-list {
   gap: 6px;
 }
 
@@ -1198,6 +1235,90 @@ textarea {
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--line);
+}
+
+.rebirth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  overflow: auto;
+}
+
+.rebirth-panel h2 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.rebirth-lede {
+  margin: 0 !important;
+  font-size: 0.72rem !important;
+  line-height: 1.3 !important;
+}
+
+.rebirth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+@media (max-width: 420px) {
+  .rebirth-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rebirth-challenges {
+  margin-top: 4px;
+  padding-top: 6px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rebirth-challenges > .hint {
+  margin: 0;
+}
+
+.rebirth-challenge-list {
+  display: grid;
+  gap: 4px;
+}
+
+.rebirth-panel .challenge-offer-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.rebirth-panel .challenge-offer-row .action-card {
+  min-width: 0;
+}
+
+.challenge-exit-btn {
+  padding: 0 10px;
+  font-size: 0.72rem;
+  align-self: stretch;
+}
+
+.rebirth-panel .challenge-log {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.rebirth-panel .muted-block h3 {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.rebirth-panel .action-card.compact p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .muted-block h3 {

@@ -104,7 +104,31 @@ export function rarityTierNumber(rarity: Rarity): number {
   return RARITY_ORDER.indexOf(rarity) + 1
 }
 
-export type GearSlot = 'pick' | 'suit' | 'core'
+export type GearSlot =
+  | 'helmet'
+  | 'mask'
+  | 'earring'
+  | 'armor'
+  | 'gloves'
+  | 'belt'
+  | 'boots'
+
+export const GEAR_SLOTS: GearSlot[] = [
+  'helmet',
+  'mask',
+  'earring',
+  'armor',
+  'gloves',
+  'belt',
+  'boots',
+]
+
+/** 舊三槽 → 新七槽（讀檔用） */
+export const LEGACY_SLOT_MAP: Record<string, GearSlot> = {
+  pick: 'gloves',
+  suit: 'armor',
+  core: 'helmet',
+}
 
 export const SLOT_META: Record<
   GearSlot,
@@ -115,23 +139,47 @@ export const SLOT_META: Record<
     primary: AffixId[]
   }
 > = {
-  pick: {
-    label: '鑽槍',
-    role: '主動開採',
-    desc: '主加點擊倍率／開採力，強化手動挖礦爆發',
-    primary: ['clickMult', 'minePower'],
+  helmet: {
+    label: '頭盔',
+    role: '離線／開採',
+    desc: '主加離線收益／開採力',
+    primary: ['offlineBonus', 'minePower'],
   },
-  suit: {
-    label: '礦甲',
-    role: '閒置產線',
-    desc: '主加閒置產量／開採力，強化掛機持續收益',
+  mask: {
+    label: '面具',
+    role: '點擊／離線',
+    desc: '主加點擊倍率／離線收益',
+    primary: ['clickMult', 'offlineBonus'],
+  },
+  earring: {
+    label: '耳環',
+    role: '閒置／離線',
+    desc: '主加閒置產量／離線收益',
+    primary: ['idleRate', 'offlineBonus'],
+  },
+  armor: {
+    label: '盔甲',
+    role: '閒置／開採',
+    desc: '主加閒置產量／開採力',
     primary: ['idleRate', 'minePower'],
   },
-  core: {
-    label: '反應核',
-    role: '離線收割',
-    desc: '主加離線收益／閒置產量，強化離開再返入帳',
-    primary: ['offlineBonus', 'idleRate'],
+  gloves: {
+    label: '手套',
+    role: '點擊／開採',
+    desc: '主加點擊倍率／開採力',
+    primary: ['clickMult', 'minePower'],
+  },
+  belt: {
+    label: '腰甲',
+    role: '閒置／點擊',
+    desc: '主加閒置產量／點擊倍率',
+    primary: ['idleRate', 'clickMult'],
+  },
+  boots: {
+    label: '鞋',
+    role: '開採／閒置',
+    desc: '主加開採力／閒置產量',
+    primary: ['minePower', 'idleRate'],
   },
 }
 
@@ -159,12 +207,22 @@ export type ResearchNode = {
   name: string
   desc: string
   branch: ResearchBranch
-  /** 晶體底價；升到下一級代價 = baseCost × costGrowth^currentLevel */
+  /** 底價；升到下一級代價 = baseCost × costGrowth^currentLevel */
   baseCost: number
   /** 每級代價倍率（幾何級，愈升愈貴） */
   costGrowth: number
+  /** 代價貨幣；預設晶體 */
+  costCurrency?: 'crystals' | 'ore'
+  /** 可選星塵底價；有就同時耗星塵（只適用晶體價） */
+  baseStardustCost?: number
+  /** 星塵每級代價倍率；缺省跟 costGrowth */
+  stardustCostGrowth?: number
   effectPerLevel: Partial<Record<AffixId, number>>
   unlocksMacros?: boolean
+  /** 解鎖對應自動化開關（通常 maxLevel=1） */
+  unlocksAutomation?: 'autoMiner' | 'autoDrill' | 'autoRebirth'
+  /** 最高等級；缺省無限 */
+  maxLevel?: number
 }
 
 export type ChallengeRule = 'noAutomation' | 'clickOnly' | 'halfIdle'
@@ -190,7 +248,7 @@ export type ChallengeOffer = {
   name: string
   desc: string
   purpose: string
-  goalOre: number
+  goalOre: BN
   unlockRebirth: number
   reward: ChallengeReward
 }
@@ -201,7 +259,8 @@ export type ChallengeRecord = {
   rule: ChallengeRule
   level: number
   name: string
-  goalOre: number
+  /** 存檔可能係 number／string；執行期用 BN */
+  goalOre: BN | number | string
   reward: ChallengeReward
   clearedAt: number
 }
@@ -250,7 +309,7 @@ export type GameState = {
   rebirthMult: BN
   /** 進化次數；永久保留 */
   evolutionCount: number
-  /** 進化累積加乘值（0→1 用加，之後互乘） */
+  /** 進化累積全局倍率（≥1；未進化時為 0，讀取當 ×1） */
   evolutionPower: BN
   automationLines: number
   macrosUnlocked: boolean

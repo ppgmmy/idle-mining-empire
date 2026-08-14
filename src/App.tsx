@@ -3,7 +3,7 @@ import { LeaderboardPanel } from './components/LeaderboardPanel'
 import { MineCanvas } from './components/MineCanvas'
 import { ResourceBar } from './components/ResourceBar'
 import { TabNav } from './components/TabNav'
-import { canUpgradeRarity, craftGearCost, nextRarity, rerollGearCost } from './game/actions'
+import { canUpgradeRarity, craftGearCost, nextRarity, rerollGearCost, sellGearRefund } from './game/actions'
 import { bn, formatBN } from './game/bigNumber'
 import {
   affixCount,
@@ -43,8 +43,10 @@ import {
   rarityAccent,
   rebirthRequirement,
   RESEARCH_TREE,
+  isAutomationUnlocked,
   researchLevel,
   researchUpgradeCost,
+  researchStardustUpgradeCost,
   stageHpRatio,
   stageMaxHp,
   stageVeinName,
@@ -53,26 +55,20 @@ import {
 import { canAccessTab } from './game/admin'
 import {
   AFFIX_META,
-  BRANCH_LABEL,
+  GEAR_SLOTS,
   RARITY_LABEL,
   RARITY_ORDER,
   rarityTierNumber,
   SLOT_META,
-  type ResearchBranch,
 } from './game/types'
 import { useGame } from './game/useGame'
 import './App.css'
-
-const RESEARCH_BRANCHES: ResearchBranch[] = (
-  ['active', 'idle', 'automation', 'economy'] as const
-).filter((branch) => RESEARCH_TREE.some((n) => n.branch === branch))
 
 export default function App() {
   const game = useGame()
   const [pulse, setPulse] = useState(0)
   const [buyMult, setBuyMult] = useState<1 | 10 | 'max'>(1)
   const [upgradeSection, setUpgradeSection] = useState<'base' | 'facility'>('base')
-  const [researchBranch, setResearchBranch] = useState<ResearchBranch>('active')
   const [oddsCraftLevel, setOddsCraftLevel] = useState<number | null>(null)
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
   const [challengeLogOpen, setChallengeLogOpen] = useState(false)
@@ -84,7 +80,7 @@ export default function App() {
   const challengeProgress = activeChallenge
     ? Math.max(
         0,
-        Math.min(1, state.ore.div(bn(Math.max(1, activeChallenge.goalOre))).toNumber()),
+        Math.min(1, state.ore.div(activeChallenge.goalOre).toNumber()),
       )
     : 0
   const selectedRecord =
@@ -109,9 +105,21 @@ export default function App() {
                 挑戰 · {activeChallenge.name}
               </span>
               <span className="challenge-progress-nums">
-                {formatBN(state.ore)} / {formatBN(bn(activeChallenge.goalOre))} ·{' '}
+                {formatBN(state.ore)} / {formatBN(activeChallenge.goalOre)} ·{' '}
                 {Math.floor(challengeProgress * 100)}%
               </span>
+              <button
+                type="button"
+                className="challenge-abandon-btn"
+                onClick={() => {
+                  const ok = window.confirm(
+                    `確定退出「${activeChallenge.name}」？\n唔會有獎勵，之後可以再接。`,
+                  )
+                  if (ok) game.abandonChallenge()
+                }}
+              >
+                退出
+              </button>
             </div>
             <div className="challenge-progress-track">
               <div
@@ -463,43 +471,41 @@ export default function App() {
 
         {game.tab === 'research' && canAccessTab('research', state.rebirthCount) ? (
           <section className="panel research-panel">
-            <h2>研究流派</h2>
+            <h2>研究</h2>
             <p className="lede">
-              耗晶體升級 · 點擊／每秒自動／離線各淨一個位 · 每級代價再乘成長 · 每級加幅×1.05 ·
-              與升級／裝備互乘
+              產量研究耗晶體 · 自動化解鎖耗礦石 · 奇點帳本另耗星塵 · 點擊／每秒自動／離線各淨一個位 ·
+              每級加幅×1.05 · 與升級／裝備互乘
             </p>
 
-            <div className="branch-tabs" role="tablist" aria-label="研究流派">
-              {RESEARCH_BRANCHES.map((branch) => (
-                <button
-                  key={branch}
-                  type="button"
-                  role="tab"
-                  aria-selected={researchBranch === branch}
-                  className={
-                    researchBranch === branch ? 'branch-tab on' : 'branch-tab'
-                  }
-                  onClick={() => setResearchBranch(branch)}
-                >
-                  {BRANCH_LABEL[branch]}
-                </button>
-              ))}
-            </div>
-
-            <div className="research-scroll" role="tabpanel">
-              <div className="stack research-branch">
-                {RESEARCH_TREE.filter((n) => n.branch === researchBranch).map((node) => {
+            <div className="research-scroll">
+              <div className="stack research-list">
+                {RESEARCH_TREE.map((node) => {
                   const level = researchLevel(state, node.id)
-                  const crystalCost = researchUpgradeCost(node, level)
-                  const crystalOk = state.crystals.gte(crystalCost)
+                  const atMax = node.maxLevel != null && level >= node.maxLevel
+                  const mainCost = researchUpgradeCost(node, level)
+                  const stardustCost = researchStardustUpgradeCost(node, level)
+                  const usesOre = node.costCurrency === 'ore'
+                  const canAfford = atMax
+                    ? false
+                    : usesOre
+                      ? state.ore.gte(mainCost)
+                      : state.crystals.gte(mainCost) &&
+                        (stardustCost.lte(0) || state.stardust.gte(stardustCost))
+                  const costLabel = atMax
+                    ? '已達上限'
+                    : usesOre
+                      ? `${formatBN(mainCost)} 礦石`
+                      : stardustCost.gt(0)
+                        ? `${formatBN(mainCost)} 晶體 + ${formatBN(stardustCost)} 星塵`
+                        : `${formatBN(mainCost)} 晶體`
                   return (
                     <ActionCard
                       key={node.id}
                       compact
-                      title={`${node.name} · ${level}`}
+                      title={`${node.name} · ${level}${node.maxLevel != null ? `/${node.maxLevel}` : ''}`}
                       desc={`${node.desc} · ${formatResearchEffects(node, level)}`}
-                      cost={`${formatBN(crystalCost)} 晶體`}
-                      disabled={!crystalOk}
+                      cost={costLabel}
+                      disabled={!canAfford}
                       onClick={() => game.buyResearch(node.id)}
                     />
                   )
@@ -510,21 +516,19 @@ export default function App() {
             <div className="stack muted-block auto-block">
               <h3>自動化</h3>
               {state.automations.map((rule) => {
-                const locked =
-                  (rule.kind === 'autoMiner' || rule.kind === 'autoDrill') &&
-                  !state.macrosUnlocked &&
-                  state.rebirthCount < 2
+                const locked = !isAutomationUnlocked(state, rule.kind)
                 return (
                   <label key={rule.id} className="toggle-row compact">
                     <span>
                       {rule.label}
                       {locked ? (
-                        <span className="toggle-hint"> · 二轉／巨集後</span>
+                        <span className="toggle-hint"> · 研究解鎖（礦石）</span>
                       ) : null}
                     </span>
                     <input
                       type="checkbox"
-                      checked={rule.enabled}
+                      checked={rule.enabled && !locked}
+                      disabled={locked}
                       onChange={() => game.toggleAutomation(rule.id)}
                     />
                   </label>
@@ -538,16 +542,16 @@ export default function App() {
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
-              打造耗星塵 · 晉升／重鑄耗晶體（階位×1.7 · 次數×1.85，大幅加價）· 晉升互乘本階升幅（起 1.05% · 每階×120%）· 全庫互乘 · 與升級／研究互乘 ·{' '}
-              {state.gear.length}/{gearCapacity(state)}
+              七槽各穿一件先生效 · 打造耗星塵（120×1.55^件數）· 晉升／重鑄耗晶體 · 庫存最多{' '}
+              {gearCapacity(state)} · {state.gear.length}/{gearCapacity(state)}
             </p>
             <p className="craft-level-line">
               打造 Lv{state.craftLevel} · {state.craftXp}/
               {craftsNeededForNextLevel(state.craftLevel)} · 最高可出{' '}
               {RARITY_LABEL[RARITY_ORDER[maxCraftRarityIndex(state.craftLevel)]!]}
             </p>
-            <div className="row-actions">
-              {(['pick', 'suit', 'core'] as const).map((slot) => {
+            <div className="row-actions craft-slot-grid">
+              {GEAR_SLOTS.map((slot) => {
                 const cost = craftGearCost(state)
                 const canAfford = state.stardust.gte(cost)
                 const canCraft = canCraftGear(state)
@@ -570,7 +574,7 @@ export default function App() {
               })}
             </div>
             {!canCraftGear(state) ? (
-              <p className="hint">已達打造上限，轉生或升級「奇點帳本」可提高上限。</p>
+              <p className="hint">已達打造上限（最多 {gearCapacity(state)} 件），請先賣出或丟棄。</p>
             ) : null}
 
             <div className="rarity-table-wrap">
@@ -656,18 +660,46 @@ export default function App() {
             ) : (
               <div className="gear-inventory">
                 <div className="gear-inventory-head">
-                  <span>詞庫（全生效 · 同類互乘）</span>
+                  <span>庫存（穿戴先生效 · 每槽一件）</span>
                   <span>
                     {state.gear.length}/{gearCapacity(state)}
                   </span>
                 </div>
+                {(() => {
+                  const unequipped = state.gear.filter(
+                    (g) => state.equipped[g.slot] !== g.id,
+                  )
+                  if (unequipped.length === 0) return null
+                  const refund = unequipped.reduce(
+                    (sum, g) => sum.add(sellGearRefund(g)),
+                    bn(0),
+                  )
+                  return (
+                    <div className="row-actions gear-sell-row">
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => {
+                          const ok = window.confirm(
+                            `賣出 ${unequipped.length} 件未穿戴裝備？\n預計收回 ${formatBN(refund)} 星塵。`,
+                          )
+                          if (ok) game.sellUnequippedGear()
+                        }}
+                      >
+                        一鍵賣未穿戴 · +{formatBN(refund)} 星塵
+                      </button>
+                    </div>
+                  )
+                })()}
                 <div className="gear-inventory-scroll">
                   {state.gear
                     .slice()
                     .sort((a, b) => {
+                      const aEq = state.equipped[a.slot] === a.id
+                      const bEq = state.equipped[b.slot] === b.id
+                      if (aEq !== bEq) return aEq ? -1 : 1
                       const aMax = !canUpgradeRarity(a.rarity)
                       const bMax = !canUpgradeRarity(b.rarity)
-                      // 已滿階（最高等）沉底
                       if (aMax !== bMax) return aMax ? 1 : -1
                       const byRarity =
                         rarityTierNumber(b.rarity) - rarityTierNumber(a.rarity)
@@ -680,15 +712,21 @@ export default function App() {
                       const upgrading = canUpgradeRarity(item.rarity)
                       const meta = SLOT_META[item.slot]
                       const rerolls = item.rerolls ?? 0
+                      const isEquipped = state.equipped[item.slot] === item.id
                       return (
                         <article
                           key={item.id}
-                          className="gear-card"
+                          className={
+                            isEquipped ? 'gear-card gear-card-equipped' : 'gear-card'
+                          }
                           style={{ borderColor: rarityAccent(item.rarity) }}
                         >
                           <div className="gear-card-head">
                             <h3>
-                              <span className="gear-name">{item.name}</span>
+                              <span className="gear-name">
+                                {isEquipped ? '● ' : ''}
+                                {item.name}
+                              </span>
                               <span className="gear-sub">
                                 {meta.label}·{meta.role}
                                 <span className="rarity-inline">
@@ -702,6 +740,23 @@ export default function App() {
                               </span>
                             </h3>
                             <div className="gear-card-btns">
+                              {isEquipped ? (
+                                <button
+                                  type="button"
+                                  className="ghost-btn"
+                                  onClick={() => game.unequipGear(item.id)}
+                                >
+                                  卸下
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="secondary-btn"
+                                  onClick={() => game.equipGear(item.id)}
+                                >
+                                  穿戴
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="secondary-btn reroll-btn"
@@ -750,6 +805,7 @@ export default function App() {
                             })}
                           </ul>
                           <p className="hint gear-card-meta">
+                            {isEquipped ? '已穿戴 · ' : '庫存 · '}
                             {rerolls > 0 ? `重鑄×${rerolls}` : '未重鑄'}
                             {upgrading
                               ? ` · 晉升後本階升幅 ${describeAffixRanges(nextRarity(item.rarity))}`
@@ -774,82 +830,99 @@ export default function App() {
         ) : null}
 
         {game.tab === 'rebirth' ? (
-          <section className="panel">
+          <section className="panel rebirth-panel">
             <h2>三重轉生</h2>
-            <p className="lede">
-              10 轉解鎖研究 · 20 轉解鎖裝備 · {EVOLUTION_UNLOCK_REBIRTH}{' '}
-              轉可進化 · 現息率 晶體{' '}
-              {Math.round(crystalInterestRate(state) * 100)}%／轉 · 星塵{' '}
-              {Math.round(stardustInterestRate(state) * 100)}%／轉
+            <p className="lede rebirth-lede">
+              研究10／裝備20／進化{EVOLUTION_UNLOCK_REBIRTH} · 息率 晶體
+              {formatBN(crystalInterestRate(state).mul(100))}% · 星塵
+              {formatBN(stardustInterestRate(state).mul(100))}%
               {(state.evolutionCount ?? 0) > 0
-                ? ` · 進化${state.evolutionCount} 全局×${formatBN(evolutionMult(state))}`
+                ? ` · 進化${state.evolutionCount}×${formatBN(evolutionMult(state))}`
                 : ''}
             </p>
-            {(() => {
-              const payout = calcRebirthPayout(state)
-              return (
-                <ActionCard
-                  title={`執行轉生 #${state.rebirthCount + 1}`}
-                  desc={`需累計礦石 ${formatBN(rebirthRequirement(state))}（目前 ${formatBN(state.totalOreEarned)}）· 預計利息 晶體+${formatBN(payout.crystalInterest)} · 星塵+${formatBN(payout.stardustInterest)} · 另獲 晶體+${formatBN(payout.crystalsGain)}${payout.stardustGain.gt(0) ? ` · 星塵+${formatBN(payout.stardustGain)}` : ''}`}
-                  cost={canRebirth(state) ? '可轉生' : '未達標'}
-                  disabled={!canRebirth(state)}
-                  onClick={game.rebirth}
-                />
-              )
-            })()}
-            <ActionCard
-              title={`進化 #${(state.evolutionCount ?? 0) + 1}`}
-              desc={
-                canEvolve(state)
-                  ? `重置進度 · 保留晶體／星塵 · 轉生歸 0 · 片段 ${formatBN(evolutionSlice(state.rebirthCount))}（轉生÷10000）${
-                      (state.evolutionCount ?? 0) <= 0 ? ' · 首次用加' : ' · 同現有相乘'
-                    } · 進化後全局 ×${formatBN(
-                      bn(1).add(nextEvolutionPower(state)),
-                    )}`
-                  : `需 ${EVOLUTION_UNLOCK_REBIRTH} 轉（目前 ${state.rebirthCount}）· 保留晶體／星塵 · 片段＝轉生×1/10000；0→1 先加，之後互乘`
-              }
-              cost={canEvolve(state) ? '進化' : `${EVOLUTION_UNLOCK_REBIRTH}轉後`}
-              disabled={!canEvolve(state)}
-              onClick={() => {
-                const ok = window.confirm(
-                  `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度（轉生歸零），只保留晶體／星塵。`,
-                )
-                if (ok) game.evolve()
-              }}
-            />
-            <div className="stack muted-block">
-              <h3>限制挑戰</h3>
-              <p className="hint">
-                三線無限級 · 目標每級×4 · 通關永久獎勵入帳 · 轉生唔取消已接挑戰 · 紀錄撳入先睇
-              </p>
-              {challengeOffers.map((c) => {
-                const unlocked = state.rebirthCount >= c.unlockRebirth
-                const canStart = canStartChallenge(state, c.id)
-                const active = state.activeChallengeId === c.id
-                const pct = active ? Math.floor(challengeProgress * 100) : 0
+            <div className="rebirth-actions">
+              {(() => {
+                const payout = calcRebirthPayout(state)
                 return (
                   <ActionCard
-                    key={c.id}
-                    title={c.name}
-                    desc={
-                      !unlocked
-                        ? `未解鎖 · 需 ${c.unlockRebirth} 轉 · ${c.purpose}`
-                        : active
-                          ? `${c.purpose} · 進度 ${formatBN(state.ore)} / ${formatBN(bn(c.goalOre))}（${pct}%）· 永久：${c.reward.label}`
-                          : `${c.purpose} · ${c.desc} · 目標 ${formatBN(bn(c.goalOre))} 礦石 · 永久：${c.reward.label}`
-                    }
-                    cost={
-                      active
-                        ? `${pct}%`
-                        : !unlocked
-                          ? `${c.unlockRebirth}轉後`
-                          : '開始'
-                    }
-                    disabled={!canStart}
-                    onClick={() => game.startChallenge(c.id)}
+                    compact
+                    title={`轉生 #${state.rebirthCount + 1}`}
+                    desc={`需 ${formatBN(rebirthRequirement(state))}（有 ${formatBN(state.totalOreEarned)}）· 息 晶+${formatBN(payout.crystalInterest)} 塵+${formatBN(payout.stardustInterest)} · +${formatBN(payout.crystalsGain)}晶${payout.stardustGain.gt(0) ? ` +${formatBN(payout.stardustGain)}塵` : ''}`}
+                    cost={canRebirth(state) ? '轉生' : '未達'}
+                    disabled={!canRebirth(state)}
+                    onClick={game.rebirth}
                   />
                 )
-              })}
+              })()}
+              <ActionCard
+                compact
+                title={`進化 #${(state.evolutionCount ?? 0) + 1}`}
+                desc={
+                  canEvolve(state)
+                    ? `清進度+晶體 · 留星塵／裝／挑戰 · ×0.95×(1+${formatBN(evolutionSlice(state.rebirthCount))}) → ×${formatBN(nextEvolutionPower(state))}`
+                    : `${EVOLUTION_UNLOCK_REBIRTH}轉後（現${state.rebirthCount}）· 每次先×0.95再×(1+轉/10000)`
+                }
+                cost={canEvolve(state) ? '進化' : `${EVOLUTION_UNLOCK_REBIRTH}轉`}
+                disabled={!canEvolve(state)}
+                onClick={() => {
+                  const ok = window.confirm(
+                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度與晶體（轉生歸零），保留星塵、裝備與挑戰。`,
+                  )
+                  if (ok) game.evolve()
+                }}
+              />
+            </div>
+            <div className="stack muted-block rebirth-challenges">
+              <h3>限制挑戰</h3>
+              <p className="hint rebirth-lede">
+                三線 Lv1–10×4／之後×12 · 只獎點擊／閒置／離線 · 轉生／進化保留 · 可退出
+              </p>
+              <div className="rebirth-challenge-list">
+                {challengeOffers.map((c) => {
+                  const unlocked = state.rebirthCount >= c.unlockRebirth
+                  const canStart = canStartChallenge(state, c.id)
+                  const active = state.activeChallengeId === c.id
+                  const pct = active ? Math.floor(challengeProgress * 100) : 0
+                  return (
+                    <div key={c.id} className="challenge-offer-row">
+                      <ActionCard
+                        compact
+                        title={c.name}
+                        desc={
+                          !unlocked
+                            ? `${c.unlockRebirth}轉解鎖`
+                            : active
+                              ? `${formatBN(state.ore)}/${formatBN(c.goalOre)} · ${pct}% · ${c.reward.label}`
+                              : `目標 ${formatBN(c.goalOre)} · ${c.reward.label}`
+                        }
+                        cost={
+                          active
+                            ? `${pct}%`
+                            : !unlocked
+                              ? `${c.unlockRebirth}轉`
+                              : '開始'
+                        }
+                        disabled={!canStart}
+                        onClick={() => game.startChallenge(c.id)}
+                      />
+                      {active ? (
+                        <button
+                          type="button"
+                          className="ghost-btn challenge-exit-btn"
+                          onClick={() => {
+                            const ok = window.confirm(
+                              `確定退出「${c.name}」？\n唔會有獎勵，之後可以再接。`,
+                            )
+                            if (ok) game.abandonChallenge()
+                          }}
+                        >
+                          退出
+                        </button>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
 
               <div className="challenge-log">
                 <button
@@ -894,7 +967,7 @@ export default function App() {
                               }
                             >
                               <span>
-                                {r.name} · 目標 {formatBN(bn(r.goalOre))}
+                                {r.name} · {formatBN(bn(r.goalOre))}
                               </span>
                               <span className="challenge-log-reward">
                                 {r.reward.label}
@@ -910,19 +983,15 @@ export default function App() {
                         <p>
                           {
                             {
-                              clickOnly: '點擊試煉',
-                              noAutomation: '停機挑戰',
-                              halfIdle: '半速軌道',
+                              clickOnly: '徒手鑿脈',
+                              noAutomation: '斷線礦道',
+                              halfIdle: '怠速輸送',
                             }[selectedRecord.rule]
                           }{' '}
-                          · Lv{selectedRecord.level} · 目標礦石{' '}
+                          · Lv{selectedRecord.level} ·{' '}
                           {formatBN(bn(selectedRecord.goalOre))}
                         </p>
-                        <p>永久獎勵：{selectedRecord.reward.label}</p>
-                        <p className="hint">
-                          入帳時間{' '}
-                          {new Date(selectedRecord.clearedAt).toLocaleString()}
-                        </p>
+                        <p>永久：{selectedRecord.reward.label}</p>
                       </div>
                     ) : null}
                   </div>

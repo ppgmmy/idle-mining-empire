@@ -32,6 +32,8 @@ import {
   rebirthRequirement,
   RESEARCH_TREE,
   researchUpgradeCost,
+  researchStardustUpgradeCost,
+  isAutomationUnlocked,
   rerollGearCost,
   rollAffixes,
   rollGear,
@@ -44,7 +46,7 @@ import {
 import { isAdmin } from './admin'
 import { grantOre, spendCrystals, spendOre, spendStardust } from './save'
 import type { FacilityId, GameState, GearSlot, TabId } from './types'
-import { OFFLINE_CAP_HOURS, RARITY_ORDER } from './types'
+import { GEAR_SLOTS, OFFLINE_CAP_HOURS, RARITY_ORDER, rarityTierNumber, SLOT_META } from './types'
 
 /** 管理員一鍵開通：研究保底等級 */
 const ADMIN_RESEARCH_FLOOR = 5
@@ -183,10 +185,15 @@ export function buyDrill(state: GameState): GameState {
   }
 }
 
-/** times＝購買次數；傳 Infinity 或很大數字＝買到買唔起 */
+/** Max 一次最多升幾級（避免單次點擊卡死 UI） */
+export const UPGRADE_MAX_BATCH = 5000
+
+/** times＝購買次數；傳 Infinity 或很大數字＝買到買唔起（上限 UPGRADE_MAX_BATCH） */
 export function buyMinerTimes(state: GameState, times: number): GameState {
   let next = state
-  const limit = Number.isFinite(times) ? Math.max(0, Math.floor(times)) : 500
+  const limit = Number.isFinite(times)
+    ? Math.max(0, Math.floor(times))
+    : UPGRADE_MAX_BATCH
   for (let i = 0; i < limit; i++) {
     const bought = buyMiner(next)
     if (bought === next) break
@@ -197,7 +204,9 @@ export function buyMinerTimes(state: GameState, times: number): GameState {
 
 export function buyDrillTimes(state: GameState, times: number): GameState {
   let next = state
-  const limit = Number.isFinite(times) ? Math.max(0, Math.floor(times)) : 500
+  const limit = Number.isFinite(times)
+    ? Math.max(0, Math.floor(times))
+    : UPGRADE_MAX_BATCH
   for (let i = 0; i < limit; i++) {
     const bought = buyDrill(next)
     if (bought === next) break
@@ -225,7 +234,9 @@ export function buyFacility(state: GameState, id: FacilityId): GameState {
 
 export function buyFacilityTimes(state: GameState, id: FacilityId, times: number): GameState {
   let next = state
-  const limit = Number.isFinite(times) ? Math.max(0, Math.floor(times)) : 500
+  const limit = Number.isFinite(times)
+    ? Math.max(0, Math.floor(times))
+    : UPGRADE_MAX_BATCH
   for (let i = 0; i < limit; i++) {
     const bought = buyFacility(next, id)
     if (bought === next) break
@@ -238,8 +249,29 @@ export function buyResearch(state: GameState, id: string): GameState {
   const node = RESEARCH_TREE.find((n) => n.id === id)
   if (!node) return state
   const level = state.researchLevels[id] ?? 0
-  const crystalCost = researchUpgradeCost(node, level)
-  const paid = spendCrystals(state, crystalCost)
+  if (node.maxLevel != null && level >= node.maxLevel) return state
+
+  const mainCost = researchUpgradeCost(node, level)
+  const stardustCost = researchStardustUpgradeCost(node, level)
+  const currency = node.costCurrency ?? 'crystals'
+
+  if (currency === 'ore') {
+    if (state.ore.lt(mainCost)) return state
+  } else {
+    if (state.crystals.lt(mainCost)) return state
+    if (stardustCost.gt(0) && state.stardust.lt(stardustCost)) return state
+  }
+
+  let paid: GameState | null = state
+  if (currency === 'ore') {
+    paid = spendOre(state, mainCost)
+  } else {
+    paid = spendCrystals(state, mainCost)
+    if (!paid) return state
+    if (stardustCost.gt(0)) {
+      paid = spendStardust(paid, stardustCost)
+    }
+  }
   if (!paid) return state
 
   let next: GameState = {
@@ -255,18 +287,31 @@ export function buyResearch(state: GameState, id: string): GameState {
         level === 0 ? next.automationLines + 1 : next.automationLines,
     }
   }
+  if (node.unlocksAutomation && level === 0) {
+    // 首次解鎖時順便打開對應開關，方便即用
+    next = {
+      ...next,
+      automations: next.automations.map((a) =>
+        a.kind === node.unlocksAutomation ? { ...a, enabled: true } : a,
+      ),
+    }
+  }
   return next
 }
 
-/** 唯一管理員：一鍵開通全部研究（保底等級）＋三槽裝備 */
+/** 唯一管理員：一鍵開通全部研究（保底等級）＋七槽裝備 */
 export function adminUnlockResearchAndGear(state: GameState): GameState {
   if (!isAdmin()) return state
 
   const researchLevels = { ...state.researchLevels }
   for (const node of RESEARCH_TREE) {
-    // 純解鎖節點（如巨集核心）升到 1 即可
+    // 純解鎖／自動化節點升到 1（或 maxLevel）即可
     const floor =
-      Object.keys(node.effectPerLevel).length === 0 ? 1 : ADMIN_RESEARCH_FLOOR
+      node.maxLevel != null
+        ? node.maxLevel
+        : Object.keys(node.effectPerLevel).length === 0
+          ? 1
+          : ADMIN_RESEARCH_FLOOR
     researchLevels[node.id] = Math.max(researchLevels[node.id] ?? 0, floor)
   }
 
@@ -275,17 +320,17 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
     researchLevels,
     macrosUnlocked: true,
     automationLines: Math.max(1, state.automationLines),
+    automations: state.automations.map((a) => ({ ...a, enabled: true })),
     craftLevel: Math.max(state.craftLevel, ADMIN_CRAFT_LEVEL),
     crystals: state.crystals.add(bn(1000)),
     stardust: state.stardust.add(bn(500)),
   }
 
-  const slots: GearSlot[] = ['pick', 'suit', 'core']
   let gear = [...next.gear]
   const equipped = { ...next.equipped }
   const topRarity = RARITY_ORDER[RARITY_ORDER.length - 1]!
 
-  for (const slot of slots) {
+  for (const slot of GEAR_SLOTS) {
     const existing = gear.find((g) => g.slot === slot)
     if (existing) {
       if (!equipped[slot]) equipped[slot] = existing.id
@@ -293,12 +338,7 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
     }
     const item = {
       id: `admin-${slot}-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-      name:
-        slot === 'pick'
-          ? '管理星鑄鑽槍'
-          : slot === 'suit'
-            ? '管理軌道礦工甲'
-            : '管理奇點反應核',
+      name: `${SLOT_META[slot].label}·管理`,
       slot,
       rarity: topRarity,
       affixes: rollAffixes(topRarity, slot),
@@ -311,21 +351,24 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
   return { ...next, gear, equipped }
 }
 
-/** 打造裝備：星塵代價，隨庫存件數上升 */
+/** 打造裝備：星塵代價，隨庫存件數急升 */
 export function craftGearCost(state: GameState) {
-  return bn(2).mul(bn(1.3).pow(state.gear.length))
+  return bn(120).mul(bn(1.55).pow(state.gear.length))
 }
 
-export function craftGear(state: GameState, slot: 'pick' | 'suit' | 'core'): GameState {
+export function craftGear(state: GameState, slot: GearSlot): GameState {
   if (!canCraftGear(state)) return state
   const cost = craftGearCost(state)
   const paid = spendStardust(state, cost)
   if (!paid) return state
   const item = rollGear(slot, paid.craftLevel)
+  // 該槽未穿戴先自動裝上；已有穿戴則只入庫存
+  const equipped = { ...paid.equipped }
+  if (!equipped[slot]) equipped[slot] = item.id
   const withItem: GameState = {
     ...paid,
     gear: [...paid.gear, item],
-    equipped: { ...paid.equipped, [slot]: item.id },
+    equipped,
   }
   return gainCraftXp(withItem, 1)
 }
@@ -339,6 +382,15 @@ export function equipGear(state: GameState, gearId: string): GameState {
   }
 }
 
+export function unequipGear(state: GameState, gearId: string): GameState {
+  const item = state.gear.find((g) => g.id === gearId)
+  if (!item) return state
+  if (state.equipped[item.slot] !== gearId) return state
+  const equipped = { ...state.equipped }
+  delete equipped[item.slot]
+  return { ...state, equipped }
+}
+
 export function dropGear(state: GameState, gearId: string): GameState {
   const item = state.gear.find((g) => g.id === gearId)
   if (!item) return state
@@ -350,6 +402,29 @@ export function dropGear(state: GameState, gearId: string): GameState {
     ...state,
     gear: state.gear.filter((g) => g.id !== gearId),
     equipped,
+  }
+}
+
+/** 一鍵賣未穿戴裝備，按稀有度回星塵 */
+export function sellGearRefund(item: { rarity: (typeof RARITY_ORDER)[number] }) {
+  return bn(8).mul(bn(1.35).pow(rarityTierNumber(item.rarity) - 1))
+}
+
+export function sellUnequippedGear(state: GameState): GameState {
+  const equippedIds = new Set(
+    Object.values(state.equipped).filter((id): id is string => !!id),
+  )
+  let refund = bn(0)
+  const keep = state.gear.filter((item) => {
+    if (equippedIds.has(item.id)) return true
+    refund = refund.add(sellGearRefund(item))
+    return false
+  })
+  if (keep.length === state.gear.length) return state
+  return {
+    ...state,
+    gear: keep,
+    stardust: state.stardust.add(refund),
   }
 }
 
@@ -403,7 +478,7 @@ export function doRebirth(state: GameState): GameState {
       .add(payout.stardustGain),
     automationLines:
       nextCount >= 2 ? Math.max(state.automationLines, 1) : state.automationLines,
-    macrosUnlocked: nextCount >= 3 || state.macrosUnlocked,
+    macrosUnlocked: state.macrosUnlocked,
     totalOreEarned: bn(0),
     /** 轉生保留已接限制挑戰（唔清 activeChallengeId） */
     activeChallengeId: state.activeChallengeId,
@@ -414,7 +489,7 @@ export function doRebirth(state: GameState): GameState {
   }
 }
 
-/** 進化：全重置（含轉生／研究／裝備／挑戰），保留晶體／星塵；進化次數 +1，累積加乘更新 */
+/** 進化：重置進度／研究／晶體，保留星塵／裝備／挑戰；進化次數 +1 */
 export function doEvolve(state: GameState): GameState {
   if (!canEvolve(state)) return state
   const nextEvo = (state.evolutionCount ?? 0) + 1
@@ -422,15 +497,21 @@ export function doEvolve(state: GameState): GameState {
   const fresh = createInitialState(Date.now())
   return {
     ...fresh,
-    crystals: state.crystals,
     stardust: state.stardust,
+    gear: state.gear,
+    equipped: state.equipped,
+    craftLevel: state.craftLevel,
+    craftXp: state.craftXp,
+    challengeCleared: state.challengeCleared,
+    challengeRecords: state.challengeRecords,
+    activeChallengeId: state.activeChallengeId,
     evolutionCount: nextEvo,
     evolutionPower: nextPower,
   }
 }
 
 export function describeEvolveNotice(state: GameState): string {
-  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生歸零 · 晶體／星塵已保留`
+  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生歸零 · 星塵／裝備／挑戰已保留 · 晶體已重置`
 }
 
 export function describeRebirthNotice(
@@ -460,6 +541,9 @@ export function describeRebirthNotice(
 export function toggleAutomation(state: GameState, id: string): GameState {
   const challenge = getActiveChallenge(state)
   if (challenge?.rule === 'noAutomation') return state
+  const target = state.automations.find((a) => a.id === id)
+  if (!target) return state
+  if (!isAutomationUnlocked(state, target.kind)) return state
   return {
     ...state,
     automations: state.automations.map((a) =>
@@ -476,6 +560,18 @@ export function startChallenge(state: GameState, id: string): GameState {
   }
 }
 
+/** 退出已接挑戰：無獎勵，可再接其他／同一線 */
+export function abandonChallenge(state: GameState): GameState {
+  const challenge = getActiveChallenge(state)
+  if (!challenge) return state
+  let next: GameState = {
+    ...state,
+    activeChallengeId: null,
+  }
+  next = pushFloater(next, `已退出挑戰 · ${challenge.name}`)
+  return next
+}
+
 function maybeClearChallenge(state: GameState): GameState {
   if (!state.activeChallengeId) return state
   const challenge = getActiveChallenge(state)
@@ -488,7 +584,7 @@ function maybeClearChallenge(state: GameState): GameState {
     rule: challenge.rule,
     level: challenge.level,
     name: challenge.name,
-    goalOre: challenge.goalOre,
+    goalOre: challenge.goalOre.toString(),
     reward,
     clearedAt: Date.now(),
   }
@@ -504,19 +600,6 @@ function maybeClearChallenge(state: GameState): GameState {
     activeChallengeId: null,
     challengeCleared: cleared,
     challengeRecords: [record, ...(state.challengeRecords ?? [])],
-    crystals: state.crystals.add(
-      bn(reward?.crystals ?? 0).mul(evolutionMult(state)),
-    ),
-    stardust: state.stardust.add(
-      bn(reward?.stardust ?? 0).mul(evolutionMult(state)),
-    ),
-  }
-  // automationLines from reward is permanent via clearedChallengeBonus; also bump base if granted
-  if (reward?.automationLines) {
-    next = {
-      ...next,
-      automationLines: next.automationLines + reward.automationLines,
-    }
   }
   next = pushFloater(
     next,
@@ -529,15 +612,12 @@ function runAutomations(state: GameState): GameState {
   const challenge = getActiveChallenge(state)
   if (challenge?.rule === 'noAutomation') return state
 
-  const automationReady =
-    state.macrosUnlocked || state.automationLines > 0 || state.rebirthCount >= 2
-
   let next = state
   for (const rule of next.automations) {
     if (!rule.enabled) continue
 
     if (rule.kind === 'autoMiner') {
-      if (!automationReady) continue
+      if (!isAutomationUnlocked(next, 'autoMiner')) continue
       while (next.ore.gte(next.minerCost.mul(rule.threshold))) {
         const bought = buyMiner(next)
         if (bought === next) break
@@ -546,7 +626,7 @@ function runAutomations(state: GameState): GameState {
     }
 
     if (rule.kind === 'autoDrill') {
-      if (!automationReady) continue
+      if (!isAutomationUnlocked(next, 'autoDrill')) continue
       while (next.ore.gte(next.drillCost.mul(rule.threshold))) {
         const bought = buyDrill(next)
         if (bought === next) break
@@ -556,6 +636,7 @@ function runAutomations(state: GameState): GameState {
 
     // 達標重生：同手動轉生同一個 canRebirth 條件
     if (rule.kind === 'autoRebirth' && canRebirth(next)) {
+      if (!isAutomationUnlocked(next, 'autoRebirth')) continue
       next = doRebirth(next)
     }
   }

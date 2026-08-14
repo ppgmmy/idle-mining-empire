@@ -24,4 +24,14 @@ describe('bigNumber', () => {
     expect(Number.isFinite(huge.e)).toBe(true)
     expect(formatBN(huge)).toMatch(/^[0-9.]+[A-Z]+$/)
   })
+
+  it('never turns Infinity multiply into zero; keeps huge gains effective', () => {
+    // 舊 bug：JS Infinity 塞入 Decimal.mul → 變成 0
+    expect(bn(1).mul(Infinity).eq(0)).toBe(true)
+    // 正確：全程 BN
+    const hugeMult = bn(1e300).mul(bn(1e300))
+    expect(hugeMult.gt(0)).toBe(true)
+    expect(formatBN(hugeMult)).not.toBe('∞')
+    expect(formatBN(hugeMult)).not.toBe('0')
+  })
 })

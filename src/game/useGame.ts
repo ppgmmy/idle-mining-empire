@@ -18,11 +18,14 @@ import {
   doRebirth,
   dropGear,
   equipGear,
+  unequipGear,
+  sellUnequippedGear,
   mineClick,
   strikeStage,
   rerollGear,
   spawnBoss,
   startChallenge,
+  abandonChallenge,
   tick,
   toggleAutomation,
 } from './actions'
@@ -31,7 +34,7 @@ import { bn, formatBN } from './bigNumber'
 import { submitLeaderboardScore } from './leaderboard'
 import { calcRebirthPayout, createInitialState } from './state'
 import { loadGame, saveGame } from './save'
-import type { FacilityId, GameState, TabId } from './types'
+import type { FacilityId, GameState, GearSlot, TabId } from './types'
 import { TICK_MS } from './types'
 
 const LEADERBOARD_SYNC_MS = 60_000
@@ -171,7 +174,7 @@ export function useGame() {
     buyFacilityTimes: (id: FacilityId, times: number) =>
       setState((s) => buyFacilityTimes(s, id, times)),
     buyResearch: (id: string) => setState((s) => buyResearch(s, id)),
-    craftGear: (slot: 'pick' | 'suit' | 'core') => {
+    craftGear: (slot: GearSlot) => {
       let craftedId: string | null = null
       setState((s) => {
         const next = craftGear(s, slot)
@@ -183,6 +186,8 @@ export function useGame() {
       return craftedId
     },
     equipGear: (gearId: string) => setState((s) => equipGear(s, gearId)),
+    unequipGear: (gearId: string) => setState((s) => unequipGear(s, gearId)),
+    sellUnequippedGear: () => setState((s) => sellUnequippedGear(s)),
     dropGear: (gearId: string) => setState((s) => dropGear(s, gearId)),
     rerollGear: (gearId: string) => setState((s) => rerollGear(s, gearId)),
     rebirth: () => {
@@ -212,5 +217,6 @@ export function useGame() {
     },
     toggleAutomation: (id: string) => setState((s) => toggleAutomation(s, id)),
     startChallenge: (id: string) => setState((s) => startChallenge(s, id)),
+    abandonChallenge: () => setState((s) => abandonChallenge(s)),
   }
 }

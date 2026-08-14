@@ -1,4 +1,4 @@
-import { bn, ONE, ZERO, type BN } from './bigNumber'
+import { bn, formatBN, ONE, ZERO, type BN } from './bigNumber'
 import type {
   Affix,
   AffixId,
@@ -38,22 +38,50 @@ export const RESEARCH_TREE: ResearchNode[] = [
     effectPerLevel: { idleRate: 0.05 },
   },
   {
-    id: 'macro-kernel',
-    name: '巨集核心',
-    desc: '解鎖自動請礦工（無產量加成）',
+    id: 'auto-miner',
+    name: '自動請礦工',
+    desc: '解鎖自動化開關：礦石夠就自動請礦工',
     branch: 'automation',
-    baseCost: 8,
-    costGrowth: 1.6,
+    baseCost: 8_000,
+    costGrowth: 1,
+    costCurrency: 'ore',
     effectPerLevel: {},
-    unlocksMacros: true,
+    unlocksAutomation: 'autoMiner',
+    maxLevel: 1,
+  },
+  {
+    id: 'auto-buy-drill',
+    name: '自動買鑽頭',
+    desc: '解鎖自動化開關：礦石夠就自動升鑽頭',
+    branch: 'automation',
+    baseCost: 25_000,
+    costGrowth: 1,
+    costCurrency: 'ore',
+    effectPerLevel: {},
+    unlocksAutomation: 'autoDrill',
+    maxLevel: 1,
+  },
+  {
+    id: 'auto-rebirth',
+    name: '達標即重生',
+    desc: '解鎖自動化開關：轉生條件達成就自動轉生',
+    branch: 'automation',
+    baseCost: 80_000,
+    costGrowth: 1,
+    costCurrency: 'ore',
+    effectPerLevel: {},
+    unlocksAutomation: 'autoRebirth',
+    maxLevel: 1,
   },
   {
     id: 'singularity-ledger',
     name: '奇點帳本',
-    desc: '唯一離線收益升級；另加裝備庫容',
+    desc: '唯一離線收益升級 · 需晶體＋星塵',
     branch: 'economy',
-    baseCost: 12,
-    costGrowth: 1.78,
+    baseCost: 40,
+    costGrowth: 2.65,
+    baseStardustCost: 25,
+    stardustCostGrowth: 2.65,
     effectPerLevel: { offlineBonus: 0.045 },
   },
 ]
@@ -75,38 +103,43 @@ export const CHALLENGE_LINES: Record<
   }
 > = {
   clickOnly: {
-    name: '點擊試煉',
-    desc: '禁用閒置產量，只靠手動挖到目標',
-    purpose: '徒手開採考驗',
+    name: '徒手鑿脈',
+    desc: '禁用閒置產量，只靠手動開鑿達標',
+    purpose: '徒手鑿穿岩層',
     unlockRebirth: 1,
     baseGoal: 40_000,
   },
   noAutomation: {
-    name: '停機挑戰',
-    desc: '禁用自動化，手動推進達標',
+    name: '斷線礦道',
+    desc: '禁用自動化，人手調度達標',
     purpose: '唔靠自動都推得郁',
     unlockRebirth: 2,
     baseGoal: 150_000,
   },
   halfIdle: {
-    name: '半速軌道',
-    desc: '閒置產量減半仍然達標',
-    purpose: '半速掛機壓力測',
+    name: '怠速輸送',
+    desc: '閒置產量減半，仍要運夠礦石',
+    purpose: '半速輸送帶考驗',
     unlockRebirth: 5,
     baseGoal: 500_000,
   },
 }
 
-/** 難度：目標礦石每級 ×4（大幅提升） */
+/** Lv1–10：每級目標 ×4；Lv11 起難度增幅大幅上調（全程 BN，唔用 Math.pow 溢位） */
 export const CHALLENGE_GOAL_GROWTH = 4
+export const CHALLENGE_GOAL_GROWTH_AFTER_10 = 12
 
-export function challengeGoalOre(rule: ChallengeRule, level: number): number {
+export function challengeGoalOre(rule: ChallengeRule, level: number): BN {
   const lv = Math.max(1, Math.floor(level))
-  const base = CHALLENGE_LINES[rule].baseGoal
-  return Math.floor(base * Math.pow(CHALLENGE_GOAL_GROWTH, lv - 1))
+  const base = bn(CHALLENGE_LINES[rule].baseGoal)
+  if (lv <= 10) {
+    return base.mul(bn(CHALLENGE_GOAL_GROWTH).pow(lv - 1)).floor()
+  }
+  const at10 = base.mul(bn(CHALLENGE_GOAL_GROWTH).pow(9))
+  return at10.mul(bn(CHALLENGE_GOAL_GROWTH_AFTER_10).pow(lv - 10)).floor()
 }
 
-/** 挑戰獎勵整體保留約 25%，成長亦放慢 */
+/** 挑戰獎勵只保留產量詞條（點擊／閒置／離線） */
 const CHALLENGE_REWARD_KEEP = 0.25
 
 export function challengeReward(rule: ChallengeRule, level: number): ChallengeReward {
@@ -115,35 +148,22 @@ export function challengeReward(rule: ChallengeRule, level: number): ChallengeRe
 
   if (rule === 'clickOnly') {
     const click = Number((0.012 * scale).toFixed(4))
-    const crystals = Math.max(1, Math.floor((12 + lv * 8) * scale))
     return {
-      label: `永久點擊+${Math.round(click * 1000) / 10}% · 晶體+${crystals}`,
-      crystals,
+      label: `永久點擊+${Math.round(click * 1000) / 10}%`,
       affix: { clickMult: click },
     }
   }
   if (rule === 'noAutomation') {
-    const mine = Number((0.01 * scale).toFixed(4))
-    const stardust = Math.max(1, Math.floor((2 + lv * 1.5) * scale))
-    const lines = lv % 10 === 0 ? 1 : 0
+    const idle = Number((0.01 * scale).toFixed(4))
     return {
-      label: `永久開採+${Math.round(mine * 1000) / 10}% · 星塵+${stardust}${
-        lines ? ' · 自動產線+1' : ''
-      }`,
-      stardust,
-      automationLines: lines || undefined,
-      affix: { minePower: mine },
+      label: `永久閒置+${Math.round(idle * 1000) / 10}%`,
+      affix: { idleRate: idle },
     }
   }
-  const idle = Number((0.01 * scale).toFixed(4))
   const offline = Number((0.012 * scale).toFixed(4))
-  const cInt = Number((0.004 * scale).toFixed(4))
-  const sInt = Number((0.003 * scale).toFixed(4))
   return {
-    label: `永久閒置+${Math.round(idle * 1000) / 10}% · 離線+${Math.round(offline * 1000) / 10}% · 息+${Math.round(cInt * 1000) / 10}%/+${Math.round(sInt * 1000) / 10}%`,
-    crystalInterest: cInt,
-    stardustInterest: sInt,
-    affix: { idleRate: idle, offlineBonus: offline },
+    label: `永久離線+${Math.round(offline * 1000) / 10}%`,
+    affix: { offlineBonus: offline },
   }
 }
 
@@ -392,14 +412,14 @@ export function rarityAccent(rarity: Rarity): string {
 }
 
 /**
- * 晉升／重鑄用晶體：隨稀有階指數上升，再 × 成長^已重鑄次數（大幅加價）
- * 例：普通起 18；每高 1 階 ×1.7；每多 1 次重鑄／晉升 ×1.85
+ * 晉升／重鑄用晶體：隨稀有階指數上升，再 × 成長^已重鑄次數（再大幅加價）
+ * 例：普通起 48；每高 1 階 ×1.9；每多 1 次重鑄／晉升 ×2.15
  */
 export function rerollGearCost(item: GearItem): BN {
   const i = Math.max(0, rarityIndex(item.rarity))
   const rerolls = item.rerolls ?? 0
-  const base = bn(18).mul(bn(1.7).pow(i))
-  return base.mul(bn(1.85).pow(rerolls))
+  const base = bn(48).mul(bn(1.9).pow(i))
+  return base.mul(bn(2.15).pow(rerolls))
 }
 
 /** 升到下一打造等級所需打造次數（愈高愈難） */
@@ -471,11 +491,7 @@ export function rollGear(slot: GearSlot, craftLevel = 1): GearItem {
   const rarity = rollRarity(craftLevel)
   return {
     id: `${slot}-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-    name: SLOT_META[slot].label === '鑽槍'
-      ? '星鑄鑽槍'
-      : SLOT_META[slot].label === '礦甲'
-        ? '軌道礦工甲'
-        : '奇點反應核',
+    name: `${SLOT_META[slot].label}·星鑄`,
     slot,
     rarity,
     affixes: rollAffixes(rarity, slot),
@@ -740,6 +756,37 @@ export function researchUpgradeCost(node: ResearchNode, currentLevel: number): B
   return bn(node.baseCost).mul(bn(node.costGrowth).pow(currentLevel))
 }
 
+/** 星塵代價（可選）；無 baseStardustCost 則為 0 */
+export function researchStardustUpgradeCost(
+  node: ResearchNode,
+  currentLevel: number,
+): BN {
+  const base = node.baseStardustCost
+  if (base == null || base <= 0) return bn(0)
+  const growth = node.stardustCostGrowth ?? node.costGrowth
+  return bn(base).mul(bn(growth).pow(currentLevel))
+}
+
+const AUTOMATION_RESEARCH_ID: Record<
+  'autoMiner' | 'autoDrill' | 'autoRebirth',
+  string
+> = {
+  autoMiner: 'auto-miner',
+  autoDrill: 'auto-buy-drill',
+  autoRebirth: 'auto-rebirth',
+}
+
+/** 舊存檔 macrosUnlocked／巨集核心仍視為全解鎖 */
+export function isAutomationUnlocked(
+  state: GameState,
+  kind: 'autoMiner' | 'autoDrill' | 'autoRebirth',
+): boolean {
+  if (state.macrosUnlocked) return true
+  if ((state.researchLevels['macro-kernel'] ?? 0) >= 1) return true
+  const id = AUTOMATION_RESEARCH_ID[kind]
+  return (state.researchLevels[id] ?? 0) >= 1
+}
+
 const RESEARCH_AFFIX_ORDER: AffixId[] = [
   'clickMult',
   'idleRate',
@@ -764,42 +811,45 @@ export function formatResearchEffects(
       return `${short}×${(1 + per).toFixed(3)}起/級(×${RESEARCH_LEVEL_GAIN_GROWTH})`
     }
     const mult = researchNodeMult(node, level, id)
-    return `${short}×${mult >= 1.1 ? mult.toFixed(2) : mult.toFixed(3)}`
+    const n = mult.toNumber()
+    if (Number.isFinite(n)) {
+      return `${short}×${n >= 1.1 ? n.toFixed(2) : n.toFixed(3)}`
+    }
+    return `${short}×${formatBN(mult)}`
   })
   if (parts.length === 0) {
-    if (node.unlocksMacros) return level >= 1 ? '已解鎖自動化' : '解鎖自動化'
-    if (node.id === 'singularity-ledger') {
-      return level > 0 ? `庫容+${level * 2}` : '庫容+2/級'
+    if (node.unlocksAutomation) {
+      return level >= 1 ? '已解鎖自動化' : '解鎖自動化開關'
     }
+    if (node.unlocksMacros) return level >= 1 ? '已解鎖自動化' : '解鎖自動化'
     return '無產量加成'
-  }
-  if (node.id === 'singularity-ledger') {
-    parts.push(level > 0 ? `庫容+${level * 2}` : '庫容+2/級')
   }
   return parts.join(' · ')
 }
 
-/** 第 levelIndex（0-based）級嘅加幅：per × GROWTH^levelIndex */
-export function researchLevelGain(per: number, levelIndex: number): number {
-  if (per <= 0) return 0
-  return per * Math.pow(RESEARCH_LEVEL_GAIN_GROWTH, Math.max(0, levelIndex))
+/** 第 levelIndex（0-based）級嘅加幅：per × GROWTH^levelIndex（BN） */
+export function researchLevelGain(per: number, levelIndex: number): BN {
+  if (per <= 0) return ZERO
+  return bn(per).mul(
+    bn(RESEARCH_LEVEL_GAIN_GROWTH).pow(Math.max(0, levelIndex)),
+  )
 }
 
 /**
- * 單一研究節點對某詞條的互乘倍率：
+ * 單一研究節點對某詞條的互乘倍率（BN）：
  * Π_{k=0..L-1} (1 + per × GROWTH^k)
  */
 export function researchNodeMult(
   node: ResearchNode,
   level: number,
   id: AffixId,
-): number {
+): BN {
   const per = node.effectPerLevel[id] ?? 0
-  if (per <= 0 || level <= 0) return 1
-  let product = 1
+  if (per <= 0 || level <= 0) return ONE
+  let product = ONE
   const lv = Math.floor(level)
   for (let k = 0; k < lv; k++) {
-    product *= 1 + researchLevelGain(per, k)
+    product = product.mul(ONE.add(researchLevelGain(per, k)))
   }
   return product
 }
@@ -810,55 +860,55 @@ export function researchTotalEffect(
   level: number,
   id: AffixId,
 ): number {
-  return researchNodeMult(node, level, id) - 1
+  return researchNodeMult(node, level, id).toNumber() - 1
 }
 
-/** 所有研究節點互乘 */
-export function researchAffixProduct(state: GameState, id: AffixId): number {
-  let product = 1
+/** 所有研究節點互乘（BN） */
+export function researchAffixProduct(state: GameState, id: AffixId): BN {
+  let product = ONE
   for (const node of RESEARCH_TREE) {
-    product *= researchNodeMult(node, researchLevel(state, node.id), id)
+    product = product.mul(
+      researchNodeMult(node, researchLevel(state, node.id), id),
+    )
   }
   return product
 }
 
-/** 挑戰永久詞條互乘 */
-export function challengeAffixProduct(state: GameState, id: AffixId): number {
-  let product = 1
+/** 挑戰永久詞條互乘（只計點擊／閒置／離線；BN） */
+export function challengeAffixProduct(state: GameState, id: AffixId): BN {
+  if (id !== 'clickMult' && id !== 'idleRate' && id !== 'offlineBonus') {
+    return ONE
+  }
+  let product = ONE
   for (const rec of state.challengeRecords ?? []) {
     const v = rec.reward?.affix?.[id] ?? 0
-    if (v) product *= 1 + v
+    if (v) product = product.mul(ONE.add(bn(v)))
   }
   return product
 }
 
+/** 挑戰已唔再提供利息／產線；舊存檔紀錄亦忽略 */
 export function clearedChallengeBonus(
-  state: GameState,
-  key: 'crystalInterest' | 'stardustInterest' | 'automationLines',
+  _state: GameState,
+  _key: 'crystalInterest' | 'stardustInterest' | 'automationLines',
 ): number {
-  let total = 0
-  for (const rec of state.challengeRecords ?? []) {
-    total += rec.reward?.[key] ?? 0
-  }
-  return total
+  return 0
 }
 
 /** 每次轉生：持有晶體／星塵收息，鼓勵儲蓄 */
 export const CRYSTAL_INTEREST_RATE = 0.05
 export const STARDUST_INTEREST_RATE = 0.03
 
-export function crystalInterestRate(state: GameState): number {
-  return (
-    (CRYSTAL_INTEREST_RATE + clearedChallengeBonus(state, 'crystalInterest')) *
-    evolutionMultNumber(state)
-  )
+export function crystalInterestRate(state: GameState): BN {
+  return bn(CRYSTAL_INTEREST_RATE)
+    .add(clearedChallengeBonus(state, 'crystalInterest'))
+    .mul(evolutionMult(state))
 }
 
-export function stardustInterestRate(state: GameState): number {
-  return (
-    (STARDUST_INTEREST_RATE + clearedChallengeBonus(state, 'stardustInterest')) *
-    evolutionMultNumber(state)
-  )
+export function stardustInterestRate(state: GameState): BN {
+  return bn(STARDUST_INTEREST_RATE)
+    .add(clearedChallengeBonus(state, 'stardustInterest'))
+    .mul(evolutionMult(state))
 }
 
 export function effectiveAutomationLines(state: GameState): number {
@@ -879,32 +929,36 @@ export function canStartChallenge(state: GameState, id: string): boolean {
   return state.rebirthCount >= offer.unlockRebirth
 }
 
-/** 詞庫內所有裝備詞條互乘：(1+v1)×(1+v2)×…；副詞條以 effectiveAffixValue 計 */
-export function gearAffixProduct(state: GameState, id: AffixId): number {
-  let product = 1
-  for (const item of state.gear) {
+/** 已穿戴裝備詞條互乘（BN）：(1+v1)×(1+v2)×… */
+export function gearAffixProduct(state: GameState, id: AffixId): BN {
+  let product = ONE
+  for (const slot of Object.keys(state.equipped) as GearSlot[]) {
+    const gearId = state.equipped[slot]
+    if (!gearId) continue
+    const item = state.gear.find((g) => g.id === gearId)
+    if (!item || item.slot !== slot) continue
     for (const affix of item.affixes) {
-      if (affix.id === id) product *= 1 + effectiveAffixValue(item.slot, affix)
+      if (affix.id === id) {
+        product = product.mul(ONE.add(bn(effectiveAffixValue(item.slot, affix))))
+      }
     }
   }
   return product
 }
 
 /**
- * 最終倍率：研究 × 挑戰 × 裝備（全部互乘）
- * 升級設施／鑽頭在 getClickGain／getIdleRatePerSec 同樣以乘算接入
+ * 最終倍率（BN）：研究 × 挑戰 × 裝備
+ * 唔好經 JS number，避免 Infinity → Decimal.mul 變 0
  */
-export function getAffixMult(state: GameState, id: AffixId): number {
-  return (
-    researchAffixProduct(state, id) *
-    challengeAffixProduct(state, id) *
-    gearAffixProduct(state, id)
-  )
+export function getAffixMult(state: GameState, id: AffixId): BN {
+  return researchAffixProduct(state, id)
+    .mul(challengeAffixProduct(state, id))
+    .mul(gearAffixProduct(state, id))
 }
 
-/** 兼容舊測試／顯示：等價於倍率 − 1 */
+/** 兼容舊測試／顯示：等價於倍率 − 1（小數範圍） */
 export function sumAffix(state: GameState, id: AffixId): number {
-  return getAffixMult(state, id) - 1
+  return getAffixMult(state, id).toNumber() - 1
 }
 
 export function getClickGain(state: GameState): BN {
@@ -948,7 +1002,7 @@ export function getIdleRatePerSec(state: GameState): BN {
 
   const conveyorLv = facilityLevel(state, 'conveyor')
   const foremanLv = facilityLevel(state, 'foreman')
-  const minerEff = Math.pow(1 + FOREMAN_PER_LEVEL, foremanLv)
+  const minerEff = bn(1 + FOREMAN_PER_LEVEL).pow(foremanLv)
   const autoLines = effectiveAutomationLines(state)
 
   let rate = bn(state.miners)
@@ -982,10 +1036,10 @@ export function nextDrillClickGain(state: GameState): BN {
   return getClickGain(after).sub(getClickGain(state))
 }
 
-export function gearCapacity(state: GameState): number {
-  // 基礎 36，每轉生 +12，奇點帳本每級 +2
-  const ledger = state.researchLevels['singularity-ledger'] ?? 0
-  return 36 + state.rebirthCount * 12 + ledger * 2
+export const GEAR_CAPACITY_MAX = 200
+
+export function gearCapacity(_state: GameState): number {
+  return GEAR_CAPACITY_MAX
 }
 
 export function canCraftGear(state: GameState): boolean {
@@ -993,42 +1047,58 @@ export function canCraftGear(state: GameState): boolean {
 }
 
 export function canRebirth(state: GameState): boolean {
-  return state.totalOreEarned.gte(1000 * Math.pow(1.8, state.rebirthCount))
+  return state.totalOreEarned.gte(rebirthRequirement(state))
 }
 
 export function rebirthRequirement(state: GameState): BN {
-  return bn(1000 * Math.pow(1.8, state.rebirthCount))
+  return bn(1000).mul(bn(1.8).pow(state.rebirthCount))
 }
 
-/** 需轉生達標先可進化；重置一切換全局倍率 */
+/** 需轉生達標先可進化；重置進度與晶體，保留星塵／裝備換全局倍率 */
 export const EVOLUTION_UNLOCK_REBIRTH = 25
 
-/** 今次進化用嘅片段：轉生次數 × 1/10000 */
+/** 每次進化對舊倍率嘅懲罰（進化因子本身唔乘） */
+export const EVOLUTION_DECAY = 0.95
+
+/** 今次進化加成比例：轉生次數 ÷ 10000（例：625 → 0.0625） */
 export function evolutionSlice(rebirthCount: number): BN {
   return bn(Math.max(0, rebirthCount)).div(10_000)
 }
 
-/**
- * 下一次進化後嘅累積值：
- * 0→1：0 + slice（加數，避免 0 乘）
- * 之後：prev × slice
- */
-export function nextEvolutionPower(state: GameState): BN {
-  const slice = evolutionSlice(state.rebirthCount)
-  const prev = state.evolutionPower ?? ZERO
-  if ((state.evolutionCount ?? 0) <= 0) return prev.add(slice)
-  return prev.mul(slice)
+/** 今次進化倍率因子：1 + 轉生/10000（例：625 → ×1.0625） */
+export function evolutionFactor(rebirthCount: number): BN {
+  return ONE.add(evolutionSlice(rebirthCount))
 }
 
 /**
- * 套用到產量／獎勵：1 + 累積值（未進化＝×1）
+ * 下一次進化後嘅全局倍率：
+ * mult' = mult × 0.95 × (1 + 轉生/10000)
+ * （0.95 只罰舊累積；今次進化因子唔乘 0.95）
+ * 未進化視為 ×1
+ */
+export function nextEvolutionPower(state: GameState): BN {
+  return evolutionMult(state)
+    .mul(bn(EVOLUTION_DECAY))
+    .mul(evolutionFactor(state.rebirthCount))
+}
+
+/**
+ * 套用到產量／獎勵嘅全局倍率。
+ * evolutionPower 存完整倍率（≥1）；未進化＝×1。
+ * 舊存檔若存「加成部份」（0＜p＜1）會自動當 1+p。
  */
 export function evolutionMult(state: GameState): BN {
-  return ONE.add(state.evolutionPower ?? ZERO)
+  if ((state.evolutionCount ?? 0) <= 0) return ONE
+  const p = state.evolutionPower ?? ZERO
+  if (p.lte(0)) return ONE
+  // 舊格式：存嘅係加成部份
+  if (p.lt(1)) return ONE.add(p)
+  return p
 }
 
 export function evolutionMultNumber(state: GameState): number {
-  return evolutionMult(state).toNumber()
+  const n = evolutionMult(state).toNumber()
+  return Number.isFinite(n) ? n : Number.MAX_VALUE
 }
 
 export function canEvolve(state: GameState): boolean {
@@ -1045,9 +1115,11 @@ export type RebirthPayout = {
 export function calcRebirthPayout(state: GameState): RebirthPayout {
   const nextCount = state.rebirthCount + 1
   const evo = evolutionMult(state)
-  const crystalsGain = bn(
-    Math.max(1, Math.floor(Math.log10(state.totalOreEarned.toNumber() + 10))),
-  ).mul(evo)
+  // log10 用 BN，避免 totalOre.toNumber() 變 Infinity
+  const logOre = state.totalOreEarned.add(10).log10()
+  const crystalsGain = bn(Math.max(1, Math.floor(Number.isFinite(logOre) ? logOre : 1))).mul(
+    evo,
+  )
   const stardustGain = (nextCount >= 3 ? bn(1) : ZERO).mul(evo)
   const crystalInterest = state.crystals.mul(crystalInterestRate(state)).floor()
   const stardustInterest = state.stardust.mul(stardustInterestRate(state)).floor()
