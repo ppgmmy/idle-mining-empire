@@ -185,6 +185,25 @@ describe('progression', () => {
     expect(facilityLevel(state, 'pulse')).toBeGreaterThan(before)
   })
 
+  it('auto-facility always buys the cheapest affordable facility', () => {
+    let state = createInitialState()
+    // pulse 升到貴過 conveyor 底價後，應先升最平嘅 conveyor
+    state = {
+      ...state,
+      ore: bn(920),
+      miners: 3,
+      facilities: { pulse: 14, conveyor: 0, blast: 0, foreman: 0 },
+      researchLevels: { 'auto-facility': 1 },
+      automations: state.automations.map((a) =>
+        a.kind === 'autoFacility' ? { ...a, enabled: true } : a,
+      ),
+    }
+    const pulseBefore = facilityLevel(state, 'pulse')
+    state = tick(state, 0.2)
+    expect(facilityLevel(state, 'conveyor')).toBe(1)
+    expect(facilityLevel(state, 'pulse')).toBe(pulseBefore)
+  })
+
   it('auto-facility still upgrades when auto-miner would drain ore first', () => {
     let state = createInitialState()
     state = {

@@ -644,25 +644,30 @@ function runAutomations(state: GameState): GameState {
     // 設施先跑：避免自動礦工／鑽頭把礦石花到低於設施價而永遠升唔到
     if (rule.kind === 'autoFacility') {
       if (!isAutomationUnlocked(next, 'autoFacility')) continue
+      const threshold = Number.isFinite(rule.threshold)
+        ? Math.max(0, rule.threshold)
+        : 1
       let buys = 0
-      let progressed = true
-      while (buys < AUTO_BUY_PER_TICK && progressed) {
-        progressed = false
+      while (buys < AUTO_BUY_PER_TICK) {
+        // 每次揀而家最平、買得起嗰隻（無固定優先次序）
+        let bestId: (typeof FACILITIES)[number]['id'] | null = null
+        let bestCost = next.ore.add(1)
         for (const def of FACILITIES) {
-          if (buys >= AUTO_BUY_PER_TICK) break
           if (!def.unlocked(next)) continue
-          const level = facilityLevel(next, def.id)
-          const cost = facilityCost(def, level)
-          const need = cost.mul(
-            Number.isFinite(rule.threshold) ? Math.max(0, rule.threshold) : 1,
+          const cost = facilityCost(def, facilityLevel(next, def.id)).mul(
+            threshold,
           )
-          if (next.ore.lt(need)) continue
-          const bought = buyFacility(next, def.id)
-          if (bought === next) continue
-          next = bought
-          buys += 1
-          progressed = true
+          if (next.ore.lt(cost)) continue
+          if (cost.lt(bestCost)) {
+            bestCost = cost
+            bestId = def.id
+          }
         }
+        if (!bestId) break
+        const bought = buyFacility(next, bestId)
+        if (bought === next) break
+        next = bought
+        buys += 1
       }
     }
   }

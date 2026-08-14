@@ -47,7 +47,7 @@ export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'auto-facility',
     name: '自動設施強化',
-    desc: '解鎖自動化開關：礦石夠就自動強化設施',
+    desc: '解鎖自動化開關：礦石夠就自動強化最平嘅設施',
     branch: 'automation',
     baseCost: 50_000,
     costGrowth: 1,
