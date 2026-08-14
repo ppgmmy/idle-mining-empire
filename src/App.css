@@ -1133,6 +1133,17 @@ textarea {
   color: var(--text);
 }
 
+.gear-doll-slot-tier-2 {
+  box-shadow: 0 0 12px color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.gear-doll-slot-tier-3,
+.gear-doll-slot-tier-4,
+.gear-doll-slot-tier-5 {
+  border-width: 2px;
+  box-shadow: 0 0 16px color-mix(in srgb, currentColor 22%, transparent);
+}
+
 .gear-doll-slot-filled.gear-doll-slot-selected {
   background: rgba(214, 186, 120, 0.14);
 }
@@ -2044,10 +2055,141 @@ textarea {
 }
 
 .gear-card {
+  --gear-accent: var(--line);
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.gear-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--gear-accent) 28%, transparent),
+    transparent 42%,
+    color-mix(in srgb, var(--gear-accent) 12%, transparent)
+  );
+}
+
+.gear-card-tier-1 {
+  border-width: 1.5px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gear-accent) 22%, transparent);
+}
+
+.gear-card-tier-1::before {
+  opacity: 0.35;
+}
+
+.gear-card-tier-2 {
+  border-width: 2px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--gear-accent) 30%, transparent),
+    0 8px 22px color-mix(in srgb, var(--gear-accent) 16%, transparent);
+}
+
+.gear-card-tier-2::before {
+  opacity: 0.55;
+}
+
+.gear-card-tier-3 {
+  border-width: 2px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--gear-accent) 45%, transparent),
+    0 0 28px color-mix(in srgb, var(--gear-accent) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+}
+
+.gear-card-tier-3::before {
+  opacity: 0.75;
+}
+
+.gear-card-tier-3::after,
+.gear-card-tier-4::after,
+.gear-card-tier-5::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid color-mix(in srgb, var(--gear-accent) 40%, transparent);
+  border-radius: 10px;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.gear-card-tier-4 {
+  border-width: 2px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--gear-accent) 55%, transparent),
+    0 0 36px color-mix(in srgb, var(--gear-accent) 38%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--gear-accent) 12%, transparent);
+  animation: gear-card-pulse 3.2s ease-in-out infinite;
+}
+
+.gear-card-tier-4::before {
+  opacity: 0.9;
+}
+
+.gear-card-tier-5 {
+  border-width: 2.5px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--gear-accent) 70%, transparent),
+    0 0 44px color-mix(in srgb, var(--gear-accent) 48%, transparent),
+    inset 0 0 30px color-mix(in srgb, var(--gear-accent) 18%, transparent);
+  animation: gear-card-pulse 2.4s ease-in-out infinite;
+}
+
+.gear-card-tier-5::before {
+  opacity: 1;
+  background:
+    linear-gradient(
+      110deg,
+      transparent 0 35%,
+      color-mix(in srgb, #fff 28%, transparent) 48%,
+      transparent 62% 100%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--gear-accent) 34%, transparent),
+      transparent 42%,
+      color-mix(in srgb, var(--gear-accent) 18%, transparent)
+    );
+  background-size: 220% 100%, 100% 100%;
+  animation: gear-foil-sweep 3.6s linear infinite;
+}
+
+.gear-card-tier-4::after,
+.gear-card-tier-5::after {
+  opacity: 0.75;
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--gear-accent) 25%, transparent);
+}
+
+@keyframes gear-card-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.06);
+  }
+}
+
+@keyframes gear-foil-sweep {
+  from {
+    background-position: 120% 0, 0 0;
+  }
+  to {
+    background-position: -40% 0, 0 0;
+  }
 }
 
 .gear-card-head {
@@ -2366,7 +2508,7 @@ textarea {
   }
 }
 
-/* —— 裝備肖像：槽位造型 + 稀有度華麗 —— */
+/* —— 裝備肖像：槽位造型 + 稀有度華麗（外觀差要一眼睇到） —— */
 .gear-portrait {
   --gp-size: 48px;
   position: relative;
@@ -2379,75 +2521,158 @@ textarea {
 }
 
 .gear-portrait-sm {
-  --gp-size: 36px;
+  --gp-size: 40px;
 }
 
 .gear-portrait-md {
-  --gp-size: 52px;
+  --gp-size: 56px;
 }
 
 .gear-portrait-lg {
-  --gp-size: 112px;
+  --gp-size: 124px;
 }
 
+.gear-portrait-plate,
 .gear-portrait-ring,
 .gear-portrait-orbit,
+.gear-portrait-foil,
 .gear-portrait-spark,
+.gear-portrait-corner,
 .gear-portrait-shape,
-.gear-portrait-glyph {
+.gear-portrait-glyph,
+.gear-portrait-no {
   position: absolute;
   inset: 0;
   margin: auto;
   pointer-events: none;
 }
 
-.gear-portrait-ring {
-  width: 92%;
-  height: 92%;
-  border-radius: 50%;
+.gear-portrait-plate {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  opacity: 0;
+  background: color-mix(in srgb, var(--gp-accent) 18%, transparent);
+}
+
+.gear-portrait-tier-1 .gear-portrait-plate {
+  opacity: 0.45;
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 40%, transparent);
+}
+
+.gear-portrait-tier-2 .gear-portrait-plate {
+  opacity: 0.7;
   border: 1px solid color-mix(in srgb, var(--gp-accent) 55%, transparent);
-  opacity: 0.35;
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--gp-accent) 25%, transparent);
+}
+
+.gear-portrait-tier-3 .gear-portrait-plate,
+.gear-portrait-tier-4 .gear-portrait-plate,
+.gear-portrait-tier-5 .gear-portrait-plate {
+  opacity: 1;
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 70%, transparent);
+  box-shadow:
+    inset 0 0 16px color-mix(in srgb, var(--gp-accent) 35%, transparent),
+    0 0 18px color-mix(in srgb, var(--gp-accent) 30%, transparent);
+}
+
+.gear-portrait-ring {
+  width: 88%;
+  height: 88%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 40%, transparent);
+  opacity: 0.22;
+}
+
+.gear-portrait-ring-outer {
+  width: 108%;
+  height: 108%;
+  opacity: 0;
+  border-style: dashed;
 }
 
 .gear-portrait-tier-1 .gear-portrait-ring {
   opacity: 0.55;
-  box-shadow: inset 0 0 10px color-mix(in srgb, var(--gp-accent) 28%, transparent);
+  border-width: 1.5px;
+  box-shadow: inset 0 0 10px color-mix(in srgb, var(--gp-accent) 30%, transparent);
 }
 
 .gear-portrait-tier-2 .gear-portrait-ring {
-  opacity: 0.75;
+  opacity: 0.8;
   border-width: 2px;
   box-shadow:
-    0 0 12px color-mix(in srgb, var(--gp-accent) 30%, transparent),
-    inset 0 0 14px color-mix(in srgb, var(--gp-accent) 35%, transparent);
+    0 0 14px color-mix(in srgb, var(--gp-accent) 35%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--gp-accent) 40%, transparent);
+}
+
+.gear-portrait-tier-2 .gear-portrait-ring-outer {
+  opacity: 0.4;
 }
 
 .gear-portrait-tier-3 .gear-portrait-ring,
-.gear-portrait-tier-4 .gear-portrait-ring {
+.gear-portrait-tier-4 .gear-portrait-ring,
+.gear-portrait-tier-5 .gear-portrait-ring {
   opacity: 1;
   border-width: 2px;
   background: conic-gradient(
     from 20deg,
-    transparent 0 40%,
-    color-mix(in srgb, var(--gp-accent) 40%, transparent) 50%,
-    transparent 60% 100%
+    transparent 0 28%,
+    color-mix(in srgb, var(--gp-accent) 55%, transparent) 42%,
+    transparent 58% 100%
   );
-  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
-  animation: gp-spin 8s linear infinite;
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2px));
+  animation: gp-spin 7s linear infinite;
+}
+
+.gear-portrait-tier-3 .gear-portrait-ring-outer,
+.gear-portrait-tier-4 .gear-portrait-ring-outer,
+.gear-portrait-tier-5 .gear-portrait-ring-outer {
+  opacity: 0.65;
+  animation: gp-spin-rev 16s linear infinite;
+}
+
+.gear-portrait-tier-5 .gear-portrait-ring {
+  animation-duration: 4.5s;
+  filter: saturate(1.25);
 }
 
 .gear-portrait-orbit {
-  width: 108%;
-  height: 108%;
+  width: 118%;
+  height: 118%;
   border-radius: 50%;
-  border: 1px dashed color-mix(in srgb, var(--gp-accent) 50%, transparent);
+  border: 1px dotted color-mix(in srgb, var(--gp-accent) 55%, transparent);
   opacity: 0;
 }
 
-.gear-portrait-tier-3 .gear-portrait-orbit,
-.gear-portrait-tier-4 .gear-portrait-orbit {
-  opacity: 0.55;
-  animation: gp-spin-rev 14s linear infinite;
+.gear-portrait-tier-4 .gear-portrait-orbit,
+.gear-portrait-tier-5 .gear-portrait-orbit {
+  opacity: 0.7;
+  animation: gp-spin 11s linear infinite;
+}
+
+.gear-portrait-foil {
+  width: 78%;
+  height: 78%;
+  border-radius: 12px;
+  opacity: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 0 40%,
+    color-mix(in srgb, #fff 45%, transparent) 50%,
+    transparent 60% 100%
+  );
+  background-size: 220% 100%;
+}
+
+.gear-portrait-tier-3 .gear-portrait-foil {
+  opacity: 0.45;
+  animation: gear-foil-sweep 4s linear infinite;
+}
+
+.gear-portrait-tier-4 .gear-portrait-foil,
+.gear-portrait-tier-5 .gear-portrait-foil {
+  opacity: 0.75;
+  animation: gear-foil-sweep 2.8s linear infinite;
 }
 
 .gear-portrait-spark {
@@ -2459,40 +2684,99 @@ textarea {
   box-shadow: 0 0 8px var(--gp-accent);
 }
 
+.gear-portrait-tier-1 .gear-portrait-spark-a {
+  opacity: 0.45;
+}
+
 .gear-portrait-tier-2 .gear-portrait-spark,
 .gear-portrait-tier-3 .gear-portrait-spark,
-.gear-portrait-tier-4 .gear-portrait-spark {
-  opacity: calc(0.35 + var(--gp-shine));
+.gear-portrait-tier-4 .gear-portrait-spark,
+.gear-portrait-tier-5 .gear-portrait-spark {
+  opacity: calc(0.4 + var(--gp-shine) * 0.5);
 }
 
 .gear-portrait-spark-a {
-  transform: translate(-42%, -38%);
+  transform: translate(-44%, -40%);
 }
 
 .gear-portrait-spark-b {
-  transform: translate(46%, -28%);
+  transform: translate(48%, -30%);
   width: 3px;
   height: 3px;
 }
 
 .gear-portrait-spark-c {
-  transform: translate(8%, 44%);
+  transform: translate(10%, 46%);
   width: 4px;
   height: 4px;
 }
 
+.gear-portrait-spark-d {
+  transform: translate(-38%, 36%);
+  width: 3px;
+  height: 3px;
+  opacity: 0;
+}
+
 .gear-portrait-tier-3 .gear-portrait-spark-a,
-.gear-portrait-tier-4 .gear-portrait-spark-a {
+.gear-portrait-tier-4 .gear-portrait-spark-a,
+.gear-portrait-tier-5 .gear-portrait-spark-a {
   animation: gp-twinkle 1.8s ease-in-out infinite;
 }
 
 .gear-portrait-tier-3 .gear-portrait-spark-b,
-.gear-portrait-tier-4 .gear-portrait-spark-b {
+.gear-portrait-tier-4 .gear-portrait-spark-b,
+.gear-portrait-tier-5 .gear-portrait-spark-b {
   animation: gp-twinkle 2.2s ease-in-out 0.4s infinite;
 }
 
-.gear-portrait-tier-4 .gear-portrait-spark-c {
+.gear-portrait-tier-4 .gear-portrait-spark-c,
+.gear-portrait-tier-5 .gear-portrait-spark-c {
   animation: gp-twinkle 1.6s ease-in-out 0.8s infinite;
+}
+
+.gear-portrait-tier-4 .gear-portrait-spark-d,
+.gear-portrait-tier-5 .gear-portrait-spark-d {
+  opacity: 0.7;
+  animation: gp-twinkle 1.9s ease-in-out 0.2s infinite;
+}
+
+.gear-portrait-corner {
+  width: 22%;
+  height: 22%;
+  opacity: 0;
+  border-color: var(--gp-accent);
+  border-style: solid;
+}
+
+.gear-portrait-tier-2 .gear-portrait-corner {
+  opacity: 0.55;
+}
+
+.gear-portrait-tier-3 .gear-portrait-corner,
+.gear-portrait-tier-4 .gear-portrait-corner,
+.gear-portrait-tier-5 .gear-portrait-corner {
+  opacity: 0.95;
+}
+
+.gear-portrait-corner-tl {
+  inset: 4% auto auto 4%;
+  border-width: 2px 0 0 2px;
+}
+
+.gear-portrait-corner-tr {
+  inset: 4% 4% auto auto;
+  border-width: 2px 2px 0 0;
+}
+
+.gear-portrait-corner-bl {
+  inset: auto auto 4% 4%;
+  border-width: 0 0 2px 2px;
+}
+
+.gear-portrait-corner-br {
+  inset: auto 4% 4% auto;
+  border-width: 0 2px 2px 0;
 }
 
 .gear-portrait-shape {
@@ -2522,13 +2806,24 @@ textarea {
     0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
+.gear-portrait-tier-1 .gear-portrait-shape-core {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+    0 0 10px color-mix(in srgb, var(--gp-accent) 22%, transparent);
+}
+
 .gear-portrait-tier-2 .gear-portrait-shape-core,
 .gear-portrait-tier-3 .gear-portrait-shape-core,
-.gear-portrait-tier-4 .gear-portrait-shape-core {
+.gear-portrait-tier-4 .gear-portrait-shape-core,
+.gear-portrait-tier-5 .gear-portrait-shape-core {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff calc(28% + var(--gp-shine) * 50%), transparent),
-    0 0 16px color-mix(in srgb, var(--gp-accent) 35%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff calc(32% + var(--gp-shine) * 50%), transparent),
+    0 0 18px color-mix(in srgb, var(--gp-accent) 45%, transparent),
     0 6px 14px rgba(0, 0, 0, 0.4);
+}
+
+.gear-portrait-tier-5 .gear-portrait-shape-core {
+  filter: saturate(1.2) brightness(1.08);
 }
 
 /* 槽位剪影 */
@@ -2609,29 +2904,31 @@ textarea {
   background:
     radial-gradient(
       circle at 30% 25%,
-      color-mix(in srgb, #fff calc(var(--gp-shine) * 80%), transparent),
+      color-mix(in srgb, #fff calc(var(--gp-shine) * 90%), transparent),
       transparent 42%
     );
 }
 
 .gear-portrait-tier-1 .gear-portrait-shape-ornament {
-  opacity: 0.55;
+  opacity: 0.65;
 }
 
 .gear-portrait-tier-2 .gear-portrait-shape-ornament,
 .gear-portrait-tier-3 .gear-portrait-shape-ornament,
-.gear-portrait-tier-4 .gear-portrait-shape-ornament {
+.gear-portrait-tier-4 .gear-portrait-shape-ornament,
+.gear-portrait-tier-5 .gear-portrait-shape-ornament {
   opacity: 1;
 }
 
 .gear-portrait-tier-3 .gear-portrait-shape-ornament::after,
-.gear-portrait-tier-4 .gear-portrait-shape-ornament::after {
+.gear-portrait-tier-4 .gear-portrait-shape-ornament::after,
+.gear-portrait-tier-5 .gear-portrait-shape-ornament::after {
   content: '';
   position: absolute;
-  inset: 12%;
-  border: 1px solid color-mix(in srgb, var(--gp-accent) 45%, transparent);
+  inset: 10%;
+  border: 1px solid color-mix(in srgb, var(--gp-accent) 55%, transparent);
   border-radius: inherit;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .gear-portrait-glyph {
@@ -2644,8 +2941,36 @@ textarea {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 
+.gear-portrait-tier-3 .gear-portrait-glyph,
+.gear-portrait-tier-4 .gear-portrait-glyph,
+.gear-portrait-tier-5 .gear-portrait-glyph {
+  filter:
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 6px color-mix(in srgb, var(--gp-accent) 55%, transparent));
+}
+
 .gear-portrait-lg .gear-portrait-glyph {
   font-size: calc(var(--gp-size) * 0.3);
+}
+
+.gear-portrait-no {
+  inset: auto 2% 2% auto;
+  width: auto;
+  height: auto;
+  z-index: 3;
+  padding: 1px 4px;
+  border-radius: 6px;
+  font-size: calc(var(--gp-size) * 0.16);
+  line-height: 1.2;
+  font-family: var(--font-display);
+  color: #fff8e8;
+  background: color-mix(in srgb, var(--gp-accent) 75%, #1a1208);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.gear-portrait-sm .gear-portrait-no {
+  font-size: 0.52rem;
+  padding: 0 3px;
 }
 
 .gear-portrait-reveal {
@@ -2702,12 +3027,46 @@ textarea {
     ),
     rgba(255, 255, 255, 0.04);
   animation: craft-reveal-in 0.4s ease-out both;
+  position: relative;
+  overflow: hidden;
+}
+
+.craft-reveal-tier-2 {
+  border-width: 2px;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--craft-accent) 22%, transparent);
+}
+
+.craft-reveal-tier-3,
+.craft-reveal-tier-4,
+.craft-reveal-tier-5 {
+  border-width: 2px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--craft-accent) 40%, transparent),
+    0 0 34px color-mix(in srgb, var(--craft-accent) 32%, transparent);
+}
+
+.craft-reveal-tier-4::before,
+.craft-reveal-tier-5::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 0 35%,
+    color-mix(in srgb, #fff 22%, transparent) 48%,
+    transparent 62% 100%
+  );
+  background-size: 220% 100%;
+  animation: gear-foil-sweep 3.2s linear infinite;
 }
 
 .craft-reveal-body {
   min-width: 0;
   display: grid;
   gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .craft-reveal-eyebrow {
@@ -2783,5 +3142,21 @@ textarea {
   .craft-reveal-affixes li {
     justify-content: center;
     gap: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gear-card-tier-4,
+  .gear-card-tier-5,
+  .gear-card-tier-5::before,
+  .gear-portrait-tier-3 .gear-portrait-ring,
+  .gear-portrait-tier-4 .gear-portrait-ring,
+  .gear-portrait-tier-5 .gear-portrait-ring,
+  .gear-portrait-ring-outer,
+  .gear-portrait-orbit,
+  .gear-portrait-foil,
+  .craft-reveal-tier-4::before,
+  .craft-reveal-tier-5::before {
+    animation: none;
   }
 }

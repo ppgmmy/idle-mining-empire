@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { LeaderboardPanel } from './components/LeaderboardPanel'
-import { GearPortrait } from './components/GearPortrait'
+import { GearPortrait, ornamentTier } from './components/GearPortrait'
 import { MineCanvas } from './components/MineCanvas'
 import { ResourceBar } from './components/ResourceBar'
 import { TabNav } from './components/TabNav'
@@ -606,6 +606,7 @@ export default function App() {
                     className={[
                       'gear-doll-slot',
                       shown ? 'gear-doll-slot-filled' : '',
+                      shown ? `gear-doll-slot-tier-${ornamentTier(shown.rarity)}` : '',
                       selected ? 'gear-doll-slot-selected' : '',
                     ]
                       .filter(Boolean)
@@ -705,7 +706,7 @@ export default function App() {
             })()}
             {craftReveal ? (
               <div
-                className="craft-reveal"
+                className={`craft-reveal craft-reveal-tier-${ornamentTier(craftReveal.rarity)}`}
                 style={
                   {
                     '--craft-accent': gearAccent(craftReveal),
@@ -843,13 +844,23 @@ export default function App() {
                       return peer ? ensureGearIdentity(peer) : null
                     })()
                     const deltaPct = gearPowerDeltaPct(item, equippedPeer)
+                    const visualTier = ornamentTier(item.rarity)
                     return (
                       <article
                         key={item.id}
-                        className={
-                          isEquipped ? 'gear-card gear-card-equipped' : 'gear-card'
+                        className={[
+                          'gear-card',
+                          `gear-card-tier-${visualTier}`,
+                          isEquipped ? 'gear-card-equipped' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        style={
+                          {
+                            borderColor: accent,
+                            '--gear-accent': accent,
+                          } as CSSProperties
                         }
-                        style={{ borderColor: accent }}
                       >
                         <div className="gear-card-head">
                           <h3>

@@ -464,15 +464,15 @@ export function rarityAccent(rarity: Rarity): string {
   return `hsl(${hue} 72% 58%)`
 }
 
-/** 單件邊框色：稀有度愈高，飽和／亮度差愈大 */
+/** 單件邊框色：稀有度愈高，色更亮、更飽和，方便一眼分階 */
 export function gearAccent(item: GearItem): string {
   const tier = Math.max(0, rarityIndex(item.rarity))
   const hue = ((item.hue ?? tier * 17) % 360 + 360) % 360
-  const sat = 52 + Math.min(38, Math.floor(tier * 1.9))
+  const sat = 48 + Math.min(48, Math.floor(tier * 2.4))
   const light =
-    48 +
-    Math.min(14, Math.floor((item.quality ?? 1) * 6)) +
-    Math.min(10, Math.floor(tier * 0.45))
+    44 +
+    Math.min(12, Math.floor((item.quality ?? 1) * 5)) +
+    Math.min(18, Math.floor(tier * 0.85))
   return `hsl(${hue} ${sat}% ${light}%)`
 }
 
