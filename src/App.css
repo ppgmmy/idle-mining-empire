@@ -1150,30 +1150,23 @@ textarea {
 }
 
 .gear-craft-block {
-  margin-bottom: 10px;
+  display: grid;
+  justify-items: stretch;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.craft-gear-btn {
+  width: 100%;
+  padding: 12px 10px;
 }
 
 .craft-price-line {
-  margin: 6px 0 0;
+  margin: 0;
+  text-align: center;
   color: var(--accent);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
-}
-
-.gear-craft-row {
-  grid-template-columns: 1fr;
-  margin-bottom: 0;
-}
-
-@media (min-width: 520px) {
-  .gear-craft-row {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.craft-random-btn,
-.gear-sheet-open-btn {
-  width: 100%;
 }
 
 .gear-odds-details {

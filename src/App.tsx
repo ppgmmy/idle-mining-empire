@@ -653,21 +653,19 @@ export default function App() {
               const canCraft = canCraftGear(state)
               return (
                 <div className="gear-craft-block">
-                  <div className="row-actions gear-craft-row">
-                    <button
-                      type="button"
-                      className="secondary-btn craft-random-btn"
-                      disabled={!canCraft || !canAfford}
-                      onClick={() => {
-                        const made = game.craftGear()
-                        if (made) setGearFilter(made.slot)
-                      }}
-                    >
-                      打造裝備
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="secondary-btn craft-gear-btn"
+                    disabled={!canCraft || !canAfford}
+                    onClick={() => {
+                      const made = game.craftGear()
+                      if (made) setGearFilter(made.slot)
+                    }}
+                  >
+                    打造裝備
+                  </button>
                   <p className="craft-price-line">
-                    打造價錢：{formatBN(cost)} 星塵
+                    {formatBN(cost)} 星塵
                     {!canCraft
                       ? ' · 庫存已滿'
                       : canAfford
