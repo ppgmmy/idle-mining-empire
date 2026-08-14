@@ -529,7 +529,11 @@ export default function App() {
                       key={node.id}
                       compact
                       title={`${node.name} · ${level}${node.maxLevel != null ? `/${node.maxLevel}` : ''}`}
-                      desc={`${node.desc} · ${formatResearchEffects(node, level)}`}
+                      desc={
+                        node.desc
+                          ? `${node.desc} · ${formatResearchEffects(node, level)}`
+                          : formatResearchEffects(node, level)
+                      }
                       cost={costLabel}
                       disabled={!canAfford}
                       onClick={() => game.buyResearch(node.id)}

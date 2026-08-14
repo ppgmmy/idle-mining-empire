@@ -71,7 +71,7 @@ export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'singularity-ledger',
     name: '奇點帳本',
-    desc: '點擊／每秒自動／離線皆加 · 需晶體＋星塵',
+    desc: '',
     branch: 'economy',
     baseCost: 40,
     costGrowth: 2.65,
