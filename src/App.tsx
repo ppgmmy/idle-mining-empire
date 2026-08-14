@@ -495,7 +495,7 @@ export default function App() {
           <section className="panel research-panel">
             <h2>研究</h2>
             <p className="lede">
-              產量研究耗晶體 · 自動化解鎖耗礦石 · 奇點帳本另耗星塵 · 點擊／每秒自動／離線各淨一個位 ·
+              產量研究耗晶體 · 自動化解鎖耗礦石 · 奇點帳本另耗星塵，並同時加點擊／每秒自動／離線 ·
               每級加幅×1.05 · 與升級／裝備互乘
             </p>
 

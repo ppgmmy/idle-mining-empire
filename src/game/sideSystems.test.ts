@@ -302,24 +302,18 @@ describe('side systems', () => {
     expect(state.stardust.gt(0)).toBe(true)
   })
 
-  it('research has exactly one upgrade slot per combat affix type', () => {
-    const affixIds = [
-      'clickMult',
-      'idleRate',
-      'minePower',
-      'offlineBonus',
-    ] as const
-    const seen: string[] = []
+  it('research has dedicated click/idle nodes; singularity buffs all three', () => {
+    const pulse = RESEARCH_TREE.find((n) => n.id === 'pulse-click')!
+    const drill = RESEARCH_TREE.find((n) => n.id === 'auto-drill')!
+    const ledger = RESEARCH_TREE.find((n) => n.id === 'singularity-ledger')!
+    expect(pulse.effectPerLevel.clickMult).toBeGreaterThan(0)
+    expect(drill.effectPerLevel.idleRate).toBeGreaterThan(0)
+    expect(ledger.effectPerLevel.clickMult).toBeGreaterThan(0)
+    expect(ledger.effectPerLevel.idleRate).toBeGreaterThan(0)
+    expect(ledger.effectPerLevel.offlineBonus).toBeGreaterThan(0)
     for (const node of RESEARCH_TREE) {
-      const keys = affixIds.filter((id) => (node.effectPerLevel[id] ?? 0) > 0)
-      expect(keys).not.toContain('minePower')
-      expect(keys.length).toBeLessThanOrEqual(1)
-      seen.push(...keys)
+      expect(node.effectPerLevel.minePower ?? 0).toBe(0)
     }
-    expect(seen.filter((id) => id === 'clickMult')).toHaveLength(1)
-    expect(seen.filter((id) => id === 'idleRate')).toHaveLength(1)
-    expect(seen.filter((id) => id === 'offlineBonus')).toHaveLength(1)
-    expect(new Set(seen).size).toBe(seen.length)
   })
 
   it('research levels, challenge and gear all multiply together', () => {

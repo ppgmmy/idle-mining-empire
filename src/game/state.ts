@@ -15,14 +15,14 @@ import type {
 import { AFFIX_META, QUALITY_BANDS, RARITY_ORDER, SLOT_ICONS, SLOT_META } from './types'
 
 /**
- * 全研究樹：每種產量加成只有一個升級位（點擊／閒置／離線各一）。
+ * 全研究樹：點擊／閒置各有專精升級；奇點帳本三者皆加（耗晶體＋星塵）。
  * 開採力同時乘點擊+閒置，研究唔再用。
  */
 export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'pulse-click',
     name: '脈衝點擊',
-    desc: '唯一點擊倍率升級',
+    desc: '點擊倍率專精升級',
     branch: 'active',
     baseCost: 3,
     costGrowth: 1.7,
@@ -31,7 +31,7 @@ export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'auto-drill',
     name: '自動鑽頭',
-    desc: '唯一閒置產量升級（每秒自動）',
+    desc: '閒置產量專精升級（每秒自動）',
     branch: 'idle',
     baseCost: 5,
     costGrowth: 1.72,
@@ -76,13 +76,17 @@ export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'singularity-ledger',
     name: '奇點帳本',
-    desc: '唯一離線收益升級 · 需晶體＋星塵',
+    desc: '點擊／每秒自動／離線皆加 · 需晶體＋星塵',
     branch: 'economy',
     baseCost: 40,
     costGrowth: 2.65,
     baseStardustCost: 25,
     stardustCostGrowth: 2.65,
-    effectPerLevel: { offlineBonus: 0.045 },
+    effectPerLevel: {
+      clickMult: 0.03,
+      idleRate: 0.03,
+      offlineBonus: 0.045,
+    },
   },
 ]
 
