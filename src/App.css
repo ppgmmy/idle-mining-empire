@@ -726,6 +726,7 @@ textarea {
   background: rgba(20, 8, 6, 0.55);
   border: 1px solid rgba(255, 122, 89, 0.35);
   backdrop-filter: blur(6px);
+  pointer-events: auto;
 }
 
 .boss-hp-track {
@@ -734,6 +735,7 @@ textarea {
   background: rgba(0, 0, 0, 0.5);
   overflow: hidden;
   border: 1px solid rgba(255, 122, 89, 0.45);
+  pointer-events: none;
 }
 
 .boss-hp-fill {
@@ -749,6 +751,7 @@ textarea {
   font-size: 0.72rem;
   color: #ffd2c2;
   font-family: var(--font-display);
+  pointer-events: none;
 }
 
 .flee-boss-btn {
@@ -758,6 +761,10 @@ textarea {
   font-size: 0.78rem;
   border-color: rgba(255, 122, 89, 0.45);
   color: #ffb39a;
+  pointer-events: auto;
+  position: relative;
+  z-index: 5;
+  cursor: pointer;
 }
 
 .explore-actions .secondary-btn,

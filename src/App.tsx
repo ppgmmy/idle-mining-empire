@@ -279,8 +279,16 @@ export default function App() {
                     <button
                       type="button"
                       className="ghost-btn flee-boss-btn"
+                      onPointerDown={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        game.setMineHold(false)
+                      }}
+                      onPointerUp={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation()
+                        e.preventDefault()
+                        game.setMineHold(false)
                         game.fleeBoss()
                         setPulse((p) => p + 1)
                       }}
