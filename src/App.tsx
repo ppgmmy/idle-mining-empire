@@ -588,7 +588,7 @@ export default function App() {
           <section className="panel gear-hub">
             <h2>裝備</h2>
             <p className="lede">
-              撳槽位或「裝備表」睇晒庫存 · 隨機打造／晉升／重鑄用星塵 ·{' '}
+              撳槽位或「裝備表」睇晒庫存 · 打造／晉升／重鑄用星塵 ·{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
             <div className="gear-doll" aria-label="裝備槽位">
@@ -641,38 +641,40 @@ export default function App() {
               const canAfford = state.stardust.gte(cost)
               const canCraft = canCraftGear(state)
               return (
-                <div className="row-actions gear-craft-row">
-                  <button
-                    type="button"
-                    className="secondary-btn craft-random-btn"
-                    disabled={!canCraft || !canAfford}
-                    onClick={() => {
-                      const made = game.craftGear()
-                      if (made) openGearSheet(made.slot)
-                      else setGearSheetOpen(true)
-                    }}
-                  >
-                    隨機打造一件
-                    <span className="craft-role">七槽隨機 · 唔可自選</span>
-                    <span className="craft-cost">
-                      {!canCraft
-                        ? '已滿'
-                        : canAfford
-                          ? `${formatBN(cost)} 星塵`
-                          : `欠 ${formatBN(cost.sub(state.stardust))} 星塵`}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-btn gear-sheet-open-btn"
-                    onClick={() => openGearSheet(gearFilter)}
-                  >
-                    打開裝備表
-                    <span className="craft-role">大表比較 · 易睇穿脫</span>
-                    <span className="craft-cost">
-                      {state.gear.length} 件
-                    </span>
-                  </button>
+                <div className="gear-craft-block">
+                  <div className="row-actions gear-craft-row">
+                    <button
+                      type="button"
+                      className="secondary-btn craft-random-btn"
+                      disabled={!canCraft || !canAfford}
+                      onClick={() => {
+                        const made = game.craftGear()
+                        if (made) openGearSheet(made.slot)
+                        else setGearSheetOpen(true)
+                      }}
+                    >
+                      打造裝備
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-btn gear-sheet-open-btn"
+                      onClick={() => openGearSheet(gearFilter)}
+                    >
+                      打開裝備表
+                      <span className="craft-role">大表比較 · 易睇穿脫</span>
+                      <span className="craft-cost">
+                        {state.gear.length} 件
+                      </span>
+                    </button>
+                  </div>
+                  <p className="craft-price-line">
+                    打造價錢：{formatBN(cost)} 星塵
+                    {!canCraft
+                      ? ' · 庫存已滿'
+                      : canAfford
+                        ? ''
+                        : ` · 尚欠 ${formatBN(cost.sub(state.stardust))}`}
+                  </p>
                 </div>
               )
             })()}
@@ -857,7 +859,7 @@ export default function App() {
                   </div>
 
                   {state.gear.length === 0 ? (
-                    <p className="hint gear-sheet-empty">尚未有裝備，先隨機打造。</p>
+                    <p className="hint gear-sheet-empty">尚未有裝備，先打造一件。</p>
                   ) : sortedGear.length === 0 ? (
                     <p className="hint gear-sheet-empty">
                       尚未有{SLOT_META[gearFilter!].label}。

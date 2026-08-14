@@ -24,7 +24,7 @@ import {
   gearItemPower,
   gearPowerDeltaPct,
 } from './state'
-import { craftGear, equipGear, mineClick, rerollGear, sellUnequippedGear, startChallenge, abandonChallenge, tick, unequipGear } from './actions'
+import { craftGear, craftGearCost, equipGear, mineClick, rerollGear, sellUnequippedGear, startChallenge, abandonChallenge, tick, unequipGear } from './actions'
 import { bn } from './bigNumber'
 import { GEAR_SLOTS, RARITY_ORDER } from './types'
 
@@ -390,7 +390,7 @@ describe('side systems', () => {
     let state = createInitialState()
     state = {
       ...state,
-      stardust: bn(200),
+      stardust: bn(500),
       rebirthCount: 20,
       craftLevel: 1,
       craftXp: 0,
@@ -398,10 +398,12 @@ describe('side systems', () => {
     const beforeLevel = state.craftLevel
     const beforeXp = state.craftXp
     const beforeDust = state.stardust
+    const cost = craftGearCost(state)
     state = craftGear(state)
     expect(state.gear).toHaveLength(1)
     expect(GEAR_SLOTS).toContain(state.gear[0]!.slot)
-    expect(state.stardust.lt(beforeDust)).toBe(true)
+    expect(state.stardust.eq(beforeDust.sub(cost))).toBe(true)
+    expect(craftGearCost(state).eq(cost)).toBe(true)
     expect(state.craftLevel > beforeLevel || state.craftXp > beforeXp).toBe(true)
   })
 

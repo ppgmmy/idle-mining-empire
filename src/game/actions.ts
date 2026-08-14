@@ -356,9 +356,11 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
   return { ...next, gear, equipped }
 }
 
-/** 打造裝備：星塵代價，隨庫存件數上升；槽位隨機 */
-export function craftGearCost(state: GameState) {
-  return bn(90).mul(bn(1.48).pow(state.gear.length))
+/** 打造裝備：固定星塵價（唔跟件數加價） */
+export const CRAFT_GEAR_COST = 200
+
+export function craftGearCost(_state?: GameState) {
+  return bn(CRAFT_GEAR_COST)
 }
 
 export function craftGear(state: GameState): GameState {
