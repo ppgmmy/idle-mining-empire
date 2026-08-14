@@ -1,4 +1,4 @@
-import { bn, formatBN, ONE, ZERO, type BN } from './bigNumber'
+import { bn, formatBN, ONE, ZERO, parseBN, type BN } from './bigNumber'
 import type {
   Affix,
   AffixId,
@@ -144,26 +144,50 @@ const CHALLENGE_REWARD_KEEP = 0.25
 
 export function challengeReward(rule: ChallengeRule, level: number): ChallengeReward {
   const lv = Math.max(1, Math.floor(level))
-  const scale = Math.pow(1.06, lv - 1) * CHALLENGE_REWARD_KEEP
+  // BN 計成長，避免 1.06^lv 溢成 Infinity
+  const scale = bn(1.06)
+    .pow(lv - 1)
+    .mul(CHALLENGE_REWARD_KEEP)
 
   if (rule === 'clickOnly') {
-    const click = Number((0.012 * scale).toFixed(4))
+    const click = scale.mul(0.012)
+    const clickN = click.toNumber()
     return {
-      label: `永久點擊+${Math.round(click * 1000) / 10}%`,
-      affix: { clickMult: click },
+      label: Number.isFinite(clickN)
+        ? `永久點擊+${Math.round(clickN * 1000) / 10}%`
+        : `永久點擊×${formatBN(ONE.add(click))}`,
+      affix: {
+        clickMult: Number.isFinite(clickN)
+          ? Number(clickN.toFixed(4))
+          : click.toString(),
+      },
     }
   }
   if (rule === 'noAutomation') {
-    const idle = Number((0.01 * scale).toFixed(4))
+    const idle = scale.mul(0.01)
+    const idleN = idle.toNumber()
     return {
-      label: `永久閒置+${Math.round(idle * 1000) / 10}%`,
-      affix: { idleRate: idle },
+      label: Number.isFinite(idleN)
+        ? `永久閒置+${Math.round(idleN * 1000) / 10}%`
+        : `永久閒置×${formatBN(ONE.add(idle))}`,
+      affix: {
+        idleRate: Number.isFinite(idleN)
+          ? Number(idleN.toFixed(4))
+          : idle.toString(),
+      },
     }
   }
-  const offline = Number((0.012 * scale).toFixed(4))
+  const offline = scale.mul(0.012)
+  const offlineN = offline.toNumber()
   return {
-    label: `永久離線+${Math.round(offline * 1000) / 10}%`,
-    affix: { offlineBonus: offline },
+    label: Number.isFinite(offlineN)
+      ? `永久離線+${Math.round(offlineN * 1000) / 10}%`
+      : `永久離線×${formatBN(ONE.add(offline))}`,
+    affix: {
+      offlineBonus: Number.isFinite(offlineN)
+        ? Number(offlineN.toFixed(4))
+        : offline.toString(),
+    },
   }
 }
 
@@ -576,7 +600,7 @@ export const FACILITIES: FacilityDef[] = [
     unlocked: (s) => s.drillLevel >= 2,
     effectLine: (lv) => {
       const cur = blastStats(Math.max(0, lv))
-      return `已暴擊${(cur.chance * 100).toFixed(1)}%/×${cur.mult.toFixed(2)} · 每次+${(BLAST_CHANCE_PER_LEVEL * 100).toFixed(2)}%/+${BLAST_MULT_PER_LEVEL.toFixed(3)}`
+      return `已暴擊${(cur.chance * 100).toFixed(1)}%/×${formatBN(cur.mult)} · 每次+${(BLAST_CHANCE_PER_LEVEL * 100).toFixed(2)}%/+${BLAST_MULT_PER_LEVEL.toFixed(3)}`
     },
   },
   {
@@ -608,11 +632,12 @@ export function facilityCost(def: FacilityDef, level: number): BN {
   return bn(def.baseCost).mul(bn(def.costGrowth).pow(level))
 }
 
-export function blastStats(level: number): { chance: number; mult: number } {
-  if (level <= 0) return { chance: 0, mult: 1 }
+export function blastStats(level: number): { chance: number; mult: BN } {
+  if (level <= 0) return { chance: 0, mult: ONE }
   return {
     chance: Math.min(0.5, BLAST_CHANCE_PER_LEVEL * level),
-    mult: BLAST_MULT_BASE + level * BLAST_MULT_PER_LEVEL,
+    // 線性成長用 BN，避免極端等級變 Infinity
+    mult: bn(BLAST_MULT_BASE).add(bn(BLAST_MULT_PER_LEVEL).mul(level)),
   }
 }
 
@@ -881,8 +906,9 @@ export function challengeAffixProduct(state: GameState, id: AffixId): BN {
   }
   let product = ONE
   for (const rec of state.challengeRecords ?? []) {
-    const v = rec.reward?.affix?.[id] ?? 0
-    if (v) product = product.mul(ONE.add(bn(v)))
+    const raw = rec.reward?.affix?.[id]
+    if (raw == null || raw === '') continue
+    product = product.mul(ONE.add(parseBN(raw)))
   }
   return product
 }

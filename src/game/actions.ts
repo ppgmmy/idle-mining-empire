@@ -115,7 +115,7 @@ export function mineClick(state: GameState): GameState {
     crit = true
   }
   let next = grantOre(state, gain)
-  next = pushFloater(next, crit ? `暴擊 ×${blast.mult.toFixed(1)}！+${formatBN(gain)}` : `+${formatBN(gain)}`)
+  next = pushFloater(next, crit ? `暴擊 ×${formatBN(blast.mult)}！+${formatBN(gain)}` : `+${formatBN(gain)}`)
   next = maybeClearChallenge(next)
   return next
 }
@@ -157,7 +157,7 @@ export function strikeStage(state: GameState): GameState {
   let next = grantOre(state, gain)
   next = pushFloater(
     next,
-    crit ? `暴擊 ×${blast.mult.toFixed(1)}！+${formatBN(gain)}` : `+${formatBN(gain)}`,
+    crit ? `暴擊 ×${formatBN(blast.mult)}！+${formatBN(gain)}` : `+${formatBN(gain)}`,
   )
   next = applyStageDamage(next, gain)
   next = maybeClearChallenge(next)

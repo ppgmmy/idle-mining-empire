@@ -232,7 +232,7 @@ export type ChallengeReward = {
   label: string
   crystals?: number
   stardust?: number
-  affix?: Partial<Record<AffixId, number>>
+  affix?: Partial<Record<AffixId, number | string>>
   /** 永久加在轉生利息率上（例如 0.03＝+3%） */
   crystalInterest?: number
   stardustInterest?: number
