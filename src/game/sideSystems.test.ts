@@ -221,7 +221,7 @@ describe('side systems', () => {
     expect(state.gear[0].affixes.length).toBe(4)
   })
 
-  it('affix tier gains start at 1.5% and rise ×1.35 per tier', () => {
+  it('affix tier gains start at 1% and rise ×1.15 per tier', () => {
     const common = affixTierGainRange('common')
     expect(common.min).toBeCloseTo(AFFIX_TIER0_GAIN, 6)
     expect(common.max).toBeGreaterThan(common.min)
