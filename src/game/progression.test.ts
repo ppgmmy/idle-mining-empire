@@ -244,10 +244,10 @@ describe('progression', () => {
     expect(bn(result.gainedOre).gt(0)).toBe(true)
   })
 
-  it('evolve applies 0.95 decay then (1 + rebirth/10000)', () => {
+  it('evolve multiplies by (1 + rebirth/10000) with no decay', () => {
     expect(canEvolve(createInitialState())).toBe(false)
     let state = createInitialState()
-    // 625 → 1 × 0.95 × 1.0625
+    // 625 → 1 × 1.0625
     state = {
       ...state,
       rebirthCount: 625,
@@ -283,9 +283,7 @@ describe('progression', () => {
       ],
       activeChallengeId: 'clickOnly-3',
     }
-    const first = bn(1)
-      .mul(bn(0.95))
-      .mul(bn(1).add(bn(625).div(10_000)))
+    const first = bn(1).mul(bn(1).add(bn(625).div(10_000)))
     state = doEvolve(state)
     expect(state.evolutionCount).toBe(1)
     expect(state.evolutionPower.eq(first)).toBe(true)
@@ -302,11 +300,9 @@ describe('progression', () => {
     // 進化贈打造經驗
     expect(state.craftXp + state.craftLevel).toBeGreaterThan(0)
 
-    // 1000 → first × 0.95 × 1.1
+    // 1000 → first × 1.1
     state = { ...state, rebirthCount: 1000 }
-    const expected = first
-      .mul(bn(0.95))
-      .mul(bn(1).add(bn(1000).div(10_000)))
+    const expected = first.mul(bn(1).add(bn(1000).div(10_000)))
     state = doEvolve(state)
     expect(state.evolutionCount).toBe(2)
     expect(state.evolutionPower.eq(expected)).toBe(true)

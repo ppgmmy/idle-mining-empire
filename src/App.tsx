@@ -17,7 +17,6 @@ import {
   evolutionMult,
   evolutionSlice,
   evolutionFactor,
-  EVOLUTION_DECAY,
   nextEvolutionPower,
   FACILITIES,
   facilityCost,
@@ -1003,7 +1002,7 @@ export default function App() {
                   {formatBN(nextEvolutionPower(state))}
                 </li>
                 <li>
-                  公式：舊倍率 ×{EVOLUTION_DECAY} × (1+轉生/10000)＝×
+                  公式：舊倍率 × (1+轉生/10000)＝×
                   {formatBN(evolutionFactor(state.rebirthCount))}（今轉 +
                   {formatBN(evolutionSlice(state.rebirthCount).mul(100))}%）
                 </li>

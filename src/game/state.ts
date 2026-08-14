@@ -1259,9 +1259,6 @@ export function rebirthRequirement(state: GameState): BN {
 /** 需轉生達標先可進化；重置進度與晶體，保留星塵／裝備換全局倍率 */
 export const EVOLUTION_UNLOCK_REBIRTH = 25
 
-/** 每次進化對舊倍率嘅懲罰（進化因子本身唔乘） */
-export const EVOLUTION_DECAY = 0.95
-
 /** 今次進化加成比例：轉生次數 ÷ 10000（例：625 → 0.0625） */
 export function evolutionSlice(rebirthCount: number): BN {
   return bn(Math.max(0, rebirthCount)).div(10_000)
@@ -1274,14 +1271,11 @@ export function evolutionFactor(rebirthCount: number): BN {
 
 /**
  * 下一次進化後嘅全局倍率：
- * mult' = mult × 0.95 × (1 + 轉生/10000)
- * （0.95 只罰舊累積；今次進化因子唔乘 0.95）
+ * mult' = mult × (1 + 轉生/10000)
  * 未進化視為 ×1
  */
 export function nextEvolutionPower(state: GameState): BN {
-  return evolutionMult(state)
-    .mul(bn(EVOLUTION_DECAY))
-    .mul(evolutionFactor(state.rebirthCount))
+  return evolutionMult(state).mul(evolutionFactor(state.rebirthCount))
 }
 
 /**
