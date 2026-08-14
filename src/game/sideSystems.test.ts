@@ -24,19 +24,9 @@ import {
   gearItemPower,
   gearPowerDeltaPct,
 } from './state'
-import {
-  craftGear,
-  equipGear,
-  mineClick,
-  rerollGear,
-  sellUnequippedGear,
-  startChallenge,
-  abandonChallenge,
-  tick,
-  unequipGear,
-} from './actions'
+import { craftGear, equipGear, mineClick, rerollGear, sellUnequippedGear, startChallenge, abandonChallenge, tick, unequipGear } from './actions'
 import { bn } from './bigNumber'
-import { RARITY_ORDER } from './types'
+import { GEAR_SLOTS, RARITY_ORDER } from './types'
 
 describe('side systems', () => {
   it('click-only challenge zeroes idle rate', () => {
@@ -214,7 +204,7 @@ describe('side systems', () => {
     let state = createInitialState()
     state = {
       ...state,
-      crystals: bn('1e40'),
+      stardust: bn('1e40'),
       gear: [item],
       equipped: { gloves: item.id },
     }
@@ -262,7 +252,7 @@ describe('side systems', () => {
     let state = createInitialState()
     state = {
       ...state,
-      crystals: bn(1e6),
+      stardust: bn(1e6),
       gear: [item],
       equipped: { gloves: item.id },
     }
@@ -407,8 +397,33 @@ describe('side systems', () => {
     }
     const beforeLevel = state.craftLevel
     const beforeXp = state.craftXp
-    state = craftGear(state, 'gloves')
+    const beforeDust = state.stardust
+    state = craftGear(state)
     expect(state.gear).toHaveLength(1)
+    expect(GEAR_SLOTS).toContain(state.gear[0]!.slot)
+    expect(state.stardust.lt(beforeDust)).toBe(true)
     expect(state.craftLevel > beforeLevel || state.craftXp > beforeXp).toBe(true)
+  })
+
+  it('rerollGear spends stardust not crystals', () => {
+    const item = {
+      ...rollGear('boots', 1),
+      rarity: 'common' as const,
+      affixes: [{ id: 'minePower' as const, label: '開採', value: 0.02 }],
+      rerolls: 0,
+    }
+    let state = createInitialState()
+    state = {
+      ...state,
+      crystals: bn(1000),
+      stardust: bn(1000),
+      gear: [item],
+    }
+    const beforeC = state.crystals
+    const beforeD = state.stardust
+    state = rerollGear(state, item.id)
+    expect(state.crystals.eq(beforeC)).toBe(true)
+    expect(state.stardust.lt(beforeD)).toBe(true)
+    expect(state.gear[0]!.rarity).toBe('rare')
   })
 })

@@ -574,7 +574,7 @@ export function ensureGearIdentity(item: GearItem): GearItem {
 }
 
 /**
- * 晉升／重鑄用晶體：隨稀有階指數上升，再 × 成長^已重鑄次數（再大幅加價）
+ * 晉升／重鑄用星塵：隨稀有階指數上升，再 × 成長^已重鑄次數
  * 例：普通起 48；每高 1 階 ×1.9；每多 1 次重鑄／晉升 ×2.15
  */
 export function rerollGearCost(item: GearItem): BN {

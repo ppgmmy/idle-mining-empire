@@ -568,7 +568,7 @@ export default function App() {
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
-              撳槽位篩選該槽全部裝備再比較穿脫 · 打造耗星塵（90×1.48^件數）· 晉升／重鑄耗晶體 · 庫存{' '}
+              撳槽位篩選該槽裝備再比較穿脫 · 隨機打造／晉升／重鑄皆耗星塵 · 庫存{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
             <div className="gear-doll" aria-label="裝備槽位篩選">
@@ -655,36 +655,34 @@ export default function App() {
               {craftsNeededForNextLevel(state.craftLevel)} · 最高可出{' '}
               {RARITY_LABEL[RARITY_ORDER[maxCraftRarityIndex(state.craftLevel)]!]}
             </p>
-            <div className="row-actions craft-slot-grid">
-              {GEAR_SLOTS.map((slot) => {
-                const cost = craftGearCost(state)
-                const canAfford = state.stardust.gte(cost)
-                const canCraft = canCraftGear(state)
-                return (
+            {(() => {
+              const cost = craftGearCost(state)
+              const canAfford = state.stardust.gte(cost)
+              const canCraft = canCraftGear(state)
+              return (
+                <div className="row-actions gear-craft-row">
                   <button
-                    key={slot}
                     type="button"
-                    className={
-                      gearFilter === slot
-                        ? 'secondary-btn craft-slot-on'
-                        : 'secondary-btn'
-                    }
-                    title={SLOT_META[slot].desc}
+                    className="secondary-btn craft-random-btn"
                     disabled={!canCraft || !canAfford}
                     onClick={() => {
-                      setGearFilter(slot)
-                      game.craftGear(slot)
+                      const made = game.craftGear()
+                      if (made) setGearFilter(made.slot)
                     }}
                   >
-                    {SLOT_META[slot].label}
-                    <span className="craft-role">{SLOT_META[slot].role}</span>
+                    隨機打造一件
+                    <span className="craft-role">七槽隨機 · 唔可自選</span>
                     <span className="craft-cost">
-                      {canCraft ? `${formatBN(cost)} 星塵` : '已滿'}
+                      {!canCraft
+                        ? '已滿'
+                        : canAfford
+                          ? `${formatBN(cost)} 星塵`
+                          : `欠 ${formatBN(cost.sub(state.stardust))} 星塵`}
                     </span>
                   </button>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })()}
             {!canCraftGear(state) ? (
               <p className="hint">已達打造上限（最多 {gearCapacity(state)} 件），請先賣出或丟棄。</p>
             ) : null}
@@ -848,7 +846,7 @@ export default function App() {
                     .map((raw) => {
                       const item = ensureGearIdentity(raw)
                       const cost = rerollGearCost(item)
-                      const canAfford = state.crystals.gte(cost)
+                      const canAfford = state.stardust.gte(cost)
                       const upgrading = canUpgradeRarity(item.rarity)
                       const meta = SLOT_META[item.slot]
                       const rerolls = item.rerolls ?? 0
@@ -951,7 +949,7 @@ export default function App() {
                                 disabled={!canAfford}
                                 onClick={() => game.rerollGear(item.id)}
                               >
-                                {upgrading ? '晉升' : '重鑄'} · {formatBN(cost)} 晶體
+                                {upgrading ? '晉升' : '重鑄'} · {formatBN(cost)} 星塵
                               </button>
                               <button
                                 type="button"

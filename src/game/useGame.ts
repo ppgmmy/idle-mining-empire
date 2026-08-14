@@ -248,16 +248,12 @@ export function useGame() {
     buyFacilityTimes: (id: FacilityId, times: number) =>
       runBuyChunks((s, n) => buyFacilityTimes(s, id, n), times),
     buyResearch: (id: string) => commit((s) => buyResearch(s, id)),
-    craftGear: (slot: GearSlot) => {
-      let craftedId: string | null = null
-      commit((s) => {
-        const next = craftGear(s, slot)
-        if (next.gear.length > s.gear.length) {
-          craftedId = next.gear[next.gear.length - 1]?.id ?? null
-        }
-        return next
-      })
-      return craftedId
+    craftGear: (): { id: string; slot: GearSlot } | null => {
+      const beforeLen = stateRef.current.gear.length
+      commit((s) => craftGear(s))
+      const item = stateRef.current.gear[stateRef.current.gear.length - 1]
+      if (stateRef.current.gear.length <= beforeLen || !item) return null
+      return { id: item.id, slot: item.slot }
     },
     equipGear: (gearId: string) => commit((s) => equipGear(s, gearId)),
     unequipGear: (gearId: string) => commit((s) => unequipGear(s, gearId)),

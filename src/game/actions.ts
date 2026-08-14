@@ -356,16 +356,17 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
   return { ...next, gear, equipped }
 }
 
-/** 打造裝備：星塵代價，隨庫存件數上升（略軟，方便刷裝） */
+/** 打造裝備：星塵代價，隨庫存件數上升；槽位隨機 */
 export function craftGearCost(state: GameState) {
   return bn(90).mul(bn(1.48).pow(state.gear.length))
 }
 
-export function craftGear(state: GameState, slot: GearSlot): GameState {
+export function craftGear(state: GameState): GameState {
   if (!canCraftGear(state)) return state
   const cost = craftGearCost(state)
   const paid = spendStardust(state, cost)
   if (!paid) return state
+  const slot = GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)]!
   const item = rollGear(slot, paid.craftLevel)
   // 該槽未穿戴先自動裝上；已有穿戴則只入庫存
   const equipped = { ...paid.equipped }
@@ -437,12 +438,12 @@ export function sellUnequippedGear(
   }
 }
 
-/** 晉升／重鑄：升 1 稀有度並將舊詞條互乘本階升幅；滿階則整條重累乘（晶體） */
+/** 晉升／重鑄：升 1 稀有度並將舊詞條互乘本階升幅；滿階則整條重累乘（星塵） */
 export function rerollGear(state: GameState, gearId: string): GameState {
   const item = state.gear.find((g) => g.id === gearId)
   if (!item) return state
   const cost = rerollGearCost(item)
-  const paid = spendCrystals(state, cost)
+  const paid = spendStardust(state, cost)
   if (!paid) return state
   const willUpgrade = canUpgradeRarity(item.rarity)
   const rarity = nextRarity(item.rarity)
@@ -451,7 +452,7 @@ export function rerollGear(state: GameState, gearId: string): GameState {
     rarity,
     affixes: willUpgrade
       ? upgradeAffixesOnRarityUp(item, rarity)
-      : rollAffixes(rarity, item.slot),
+      : rollAffixes(rarity, item.slot, item.quality ?? 1),
     rerolls: (item.rerolls ?? 0) + 1,
   }
   return {

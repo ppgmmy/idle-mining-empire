@@ -1149,8 +1149,13 @@ textarea {
   cursor: not-allowed;
 }
 
-.craft-slot-on {
-  box-shadow: inset 0 0 0 1px rgba(214, 186, 120, 0.45);
+.gear-craft-row {
+  grid-template-columns: 1fr;
+  margin-bottom: 10px;
+}
+
+.craft-random-btn {
+  width: 100%;
 }
 
 .gear-doll-slot:hover {
