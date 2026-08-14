@@ -995,8 +995,8 @@ const RESEARCH_AFFIX_ORDER: AffixId[] = [
   'offlineBonus',
 ]
 
-/** 研究每級加幅成長：第 n 級加幅 = 底值 × 1.05^(n-1) */
-export const RESEARCH_LEVEL_GAIN_GROWTH = 1.05
+/** 研究每級加幅成長：第 n 級加幅 = 底值 × 1.1^(n-1) */
+export const RESEARCH_LEVEL_GAIN_GROWTH = 1.1
 
 /** 顯示用：該研究目前等級下嘅單一能力（每級互乘，加幅跟 RESEARCH_LEVEL_GAIN_GROWTH） */
 export function formatResearchEffects(
