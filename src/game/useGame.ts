@@ -50,21 +50,37 @@ export function useGame() {
   const [banner, setBanner] = useState<string | null>(null)
   const [bannerLeaving, setBannerLeaving] = useState(false)
   const stateRef = useRef(state)
-  stateRef.current = state
   const flushScheduled = useRef(false)
+  const flushGen = useRef(0)
   const mineHoldRef = useRef(false)
   const lastMineHoldAt = useRef(0)
+
+  /** 只喺冇 pending commit 時同步 React→ref，避免 banner 重 render 蓋掉未 flush 嘅進化／轉生 */
+  useEffect(() => {
+    if (!flushScheduled.current) {
+      stateRef.current = state
+    }
+  }, [state])
 
   /** 寫入 stateRef，同幀合併 flush 到 React，避免狂撳掣卡住 tick */
   const commit = useEffectEvent((updater: (s: GameState) => GameState) => {
     stateRef.current = updater(stateRef.current)
     if (!flushScheduled.current) {
       flushScheduled.current = true
+      const gen = ++flushGen.current
       requestAnimationFrame(() => {
+        if (gen !== flushGen.current) return
         flushScheduled.current = false
         setState(stateRef.current)
       })
     }
+  })
+
+  /** 進化／轉生等關鍵操作即刻 flush，唔等 rAF（防 confirm／banner 競態） */
+  const flushNow = useEffectEvent(() => {
+    flushGen.current += 1
+    flushScheduled.current = false
+    setState(stateRef.current)
   })
 
   const syncLeaderboard = useEffectEvent(() => {
@@ -137,6 +153,7 @@ export function useGame() {
       const payout = calcRebirthPayout(stateRef.current)
       commit((s) => tick(s, dtSec))
       if (stateRef.current.rebirthCount > before) {
+        flushNow()
         setBannerLeaving(false)
         setBanner(`自動${describeRebirthNotice(stateRef.current, payout)}`)
         queueMicrotask(() => syncLeaderboard())
@@ -248,29 +265,26 @@ export function useGame() {
     dropGear: (gearId: string) => commit((s) => dropGear(s, gearId)),
     rerollGear: (gearId: string) => commit((s) => rerollGear(s, gearId)),
     rebirth: () => {
-      commit((s) => {
-        const before = s.rebirthCount
-        const payout = calcRebirthPayout(s)
-        const next = doRebirth(s)
-        if (next.rebirthCount > before) {
-          setBannerLeaving(false)
-          setBanner(describeRebirthNotice(next, payout))
-          queueMicrotask(() => syncLeaderboard())
-        }
-        return next
-      })
+      const before = stateRef.current.rebirthCount
+      const payout = calcRebirthPayout(stateRef.current)
+      commit((s) => doRebirth(s))
+      if (stateRef.current.rebirthCount > before) {
+        flushNow()
+        setBannerLeaving(false)
+        setBanner(describeRebirthNotice(stateRef.current, payout))
+        queueMicrotask(() => syncLeaderboard())
+      }
     },
     evolve: () => {
-      commit((s) => {
-        const before = s.evolutionCount ?? 0
-        const next = doEvolve(s)
-        if ((next.evolutionCount ?? 0) > before) {
-          setBannerLeaving(false)
-          setBanner(describeEvolveNotice(next))
-          queueMicrotask(() => syncLeaderboard())
-        }
-        return next
-      })
+      const before = stateRef.current.evolutionCount ?? 0
+      commit((s) => doEvolve(s))
+      if ((stateRef.current.evolutionCount ?? 0) > before) {
+        flushNow()
+        saveGame(stateRef.current)
+        setBannerLeaving(false)
+        setBanner(describeEvolveNotice(stateRef.current))
+        queueMicrotask(() => syncLeaderboard())
+      }
     },
     toggleAutomation: (id: string) => commit((s) => toggleAutomation(s, id)),
     startChallenge: (id: string) => commit((s) => startChallenge(s, id)),

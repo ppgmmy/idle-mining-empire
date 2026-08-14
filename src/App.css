@@ -1331,8 +1331,66 @@ textarea {
 
 .rebirth-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 6px;
+}
+
+.evolve-status {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.evolve-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(214, 186, 120, 0.35);
+  border-radius: 14px;
+  background: rgba(214, 186, 120, 0.06);
+}
+
+.evolve-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.evolve-card-head strong {
+  font-size: 0.95rem;
+}
+
+.evolve-card-req {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.evolve-facts {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.evolve-facts li {
+  word-break: break-word;
+}
+
+.evolve-btn {
+  width: 100%;
+  padding: 12px 10px;
+  font-size: 0.9rem;
+}
+
+.evolve-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 @media (max-width: 420px) {
@@ -1388,10 +1446,11 @@ textarea {
 }
 
 .rebirth-panel .action-card.compact p {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .muted-block h3 {

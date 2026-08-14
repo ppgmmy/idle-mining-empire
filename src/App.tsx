@@ -16,6 +16,8 @@ import {
   EVOLUTION_UNLOCK_REBIRTH,
   evolutionMult,
   evolutionSlice,
+  evolutionFactor,
+  EVOLUTION_DECAY,
   nextEvolutionPower,
   describeAffixRanges,
   FACILITIES,
@@ -910,13 +912,18 @@ export default function App() {
           <section className="panel rebirth-panel">
             <h2>三重轉生</h2>
             <p className="lede rebirth-lede">
-              研究10／裝備20／進化{EVOLUTION_UNLOCK_REBIRTH} · 息率 晶體
-              {formatBN(crystalInterestRate(state).mul(100))}% · 星塵
+              研究 10 轉 · 裝備 20 轉 · 進化 {EVOLUTION_UNLOCK_REBIRTH} 轉 · 息率
+              晶體 {formatBN(crystalInterestRate(state).mul(100))}% · 星塵{' '}
               {formatBN(stardustInterestRate(state).mul(100))}%
-              {(state.evolutionCount ?? 0) > 0
-                ? ` · 進化${state.evolutionCount}×${formatBN(evolutionMult(state))}`
-                : ''}
             </p>
+            {(state.evolutionCount ?? 0) > 0 ? (
+              <p className="evolve-status">
+                目前進化第 {state.evolutionCount} 階 · 全局倍率 ×
+                {formatBN(evolutionMult(state))}
+              </p>
+            ) : (
+              <p className="evolve-status">尚未進化 · 全局倍率 ×1</p>
+            )}
             <div className="rebirth-actions">
               {(() => {
                 const payout = calcRebirthPayout(state)
@@ -931,15 +938,32 @@ export default function App() {
                   />
                 )
               })()}
-              <ActionCard
-                compact
-                title={`進化 #${(state.evolutionCount ?? 0) + 1}`}
-                desc={
-                  canEvolve(state)
-                    ? `清進度+晶體 · 留星塵／裝／挑戰 · ×0.95×(1+${formatBN(evolutionSlice(state.rebirthCount))}) → ×${formatBN(nextEvolutionPower(state))}`
-                    : `${EVOLUTION_UNLOCK_REBIRTH}轉後（現${state.rebirthCount}）· 每次先×0.95再×(1+轉/10000)`
-                }
-                cost={canEvolve(state) ? '進化' : `${EVOLUTION_UNLOCK_REBIRTH}轉`}
+            </div>
+            <div className="evolve-card">
+              <div className="evolve-card-head">
+                <strong>進化 #{(state.evolutionCount ?? 0) + 1}</strong>
+                <span className="evolve-card-req">
+                  {canEvolve(state)
+                    ? `已達標（${state.rebirthCount} 轉）`
+                    : `需 ${EVOLUTION_UNLOCK_REBIRTH} 轉（現 ${state.rebirthCount}）`}
+                </span>
+              </div>
+              <ul className="evolve-facts">
+                <li>
+                  倍率：現 ×{formatBN(evolutionMult(state))} → 進化後 ×
+                  {formatBN(nextEvolutionPower(state))}
+                </li>
+                <li>
+                  公式：舊倍率 ×{EVOLUTION_DECAY} × (1+轉生/10000)＝×
+                  {formatBN(evolutionFactor(state.rebirthCount))}（今轉 +
+                  {formatBN(evolutionSlice(state.rebirthCount).mul(100))}%）
+                </li>
+                <li>保留：星塵、裝備、打造等級、挑戰進度</li>
+                <li>重置：礦石進度、轉生次數、研究、晶體、設施</li>
+              </ul>
+              <button
+                type="button"
+                className="secondary-btn evolve-btn"
                 disabled={!canEvolve(state)}
                 onClick={() => {
                   const ok = window.confirm(
@@ -947,7 +971,9 @@ export default function App() {
                   )
                   if (ok) game.evolve()
                 }}
-              />
+              >
+                {canEvolve(state) ? '確認進化' : `未達 ${EVOLUTION_UNLOCK_REBIRTH} 轉`}
+              </button>
             </div>
             <div className="stack muted-block rebirth-challenges">
               <h3>限制挑戰</h3>
