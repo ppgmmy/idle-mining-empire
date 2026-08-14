@@ -265,11 +265,11 @@ const AFFIX_POOL: Array<{ id: AffixId; label: string }> = [
   { id: 'offlineBonus', label: AFFIX_META.offlineBonus.label },
 ]
 
-/** 普通起始升幅 1.05%；之後每階 ×120%（即 ×1.2） */
-export const AFFIX_TIER0_GAIN = 0.0105
-export const AFFIX_TIER_GROWTH = 1.2
+/** 普通起始升幅 1.5%；之後每階 ×135%（稀有度差更明顯） */
+export const AFFIX_TIER0_GAIN = 0.015
+export const AFFIX_TIER_GROWTH = 1.35
 /** 同階隨機上限：略低於下階底，保證本階最高 < 下階最低 */
-const AFFIX_WITHIN_TIER_SPREAD = 1.15
+const AFFIX_WITHIN_TIER_SPREAD = 1.2
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
@@ -287,7 +287,7 @@ export function affixCount(rarity: Rarity): number {
   return 4
 }
 
-/** 第 i 階基準升幅：1.05% × 1.2^i */
+/** 第 i 階基準升幅：1.5% × 1.35^i */
 export function affixTierBaseGain(rarity: Rarity): number {
   const i = Math.max(0, rarityIndex(rarity))
   return AFFIX_TIER0_GAIN * Math.pow(AFFIX_TIER_GROWTH, i)
@@ -464,11 +464,15 @@ export function rarityAccent(rarity: Rarity): string {
   return `hsl(${hue} 72% 58%)`
 }
 
-/** 單件邊框色：以 hue 為主，稀有度略提高飽和 */
+/** 單件邊框色：稀有度愈高，飽和／亮度差愈大 */
 export function gearAccent(item: GearItem): string {
-  const hue = ((item.hue ?? rarityIndex(item.rarity) * 17) % 360 + 360) % 360
-  const sat = 58 + Math.min(22, rarityIndex(item.rarity))
-  const light = 52 + Math.min(10, Math.floor((item.quality ?? 1) * 8))
+  const tier = Math.max(0, rarityIndex(item.rarity))
+  const hue = ((item.hue ?? tier * 17) % 360 + 360) % 360
+  const sat = 52 + Math.min(38, Math.floor(tier * 1.9))
+  const light =
+    48 +
+    Math.min(14, Math.floor((item.quality ?? 1) * 6)) +
+    Math.min(10, Math.floor(tier * 0.45))
   return `hsl(${hue} ${sat}% ${light}%)`
 }
 

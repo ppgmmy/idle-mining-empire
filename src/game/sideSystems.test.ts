@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AFFIX_TIER0_GAIN,
+  AFFIX_TIER_GROWTH,
   affixTierGainRange,
   buildChallengeOffer,
   challengeGoalOre,
@@ -219,16 +221,19 @@ describe('side systems', () => {
     expect(state.gear[0].affixes.length).toBe(4)
   })
 
-  it('affix tier gains start at 1.05% and rise ×1.2 per tier', () => {
+  it('affix tier gains start at 1.5% and rise ×1.35 per tier', () => {
     const common = affixTierGainRange('common')
-    expect(common.min).toBeCloseTo(0.0105, 6)
+    expect(common.min).toBeCloseTo(AFFIX_TIER0_GAIN, 6)
     expect(common.max).toBeGreaterThan(common.min)
-    expect(common.max).toBeLessThan(0.0105 * 1.2)
+    expect(common.max).toBeLessThan(AFFIX_TIER0_GAIN * AFFIX_TIER_GROWTH)
 
     let prev = common
     for (let i = 1; i < RARITY_ORDER.length; i++) {
       const range = affixTierGainRange(RARITY_ORDER[i]!)
-      expect(range.min).toBeCloseTo(0.0105 * Math.pow(1.2, i), 6)
+      expect(range.min).toBeCloseTo(
+        AFFIX_TIER0_GAIN * Math.pow(AFFIX_TIER_GROWTH, i),
+        6,
+      )
       expect(range.min).toBeGreaterThan(prev.max)
       prev = range
     }
