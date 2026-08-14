@@ -1838,8 +1838,66 @@ textarea {
   padding-bottom: 0;
 }
 
+.research-panel .auto-block h3 {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+}
+
 .auto-block {
   gap: 0;
+}
+
+.auto-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.auto-toggle-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.auto-toggle-chip.on {
+  border-color: rgba(87, 199, 178, 0.45);
+  background: rgba(87, 199, 178, 0.12);
+}
+
+.auto-toggle-chip.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: var(--muted);
+}
+
+.auto-toggle-chip input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.auto-toggle-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auto-toggle-lock {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  color: var(--muted);
 }
 
 .research-panel .toggle-row.compact:last-child {

@@ -538,25 +538,33 @@ export default function App() {
 
             <div className="stack muted-block auto-block">
               <h3>自動化</h3>
-              {state.automations.map((rule) => {
-                const locked = !isAutomationUnlocked(state, rule.kind)
-                return (
-                  <label key={rule.id} className="toggle-row compact">
-                    <span>
-                      {rule.label}
-                      {locked ? (
-                        <span className="toggle-hint"> · 研究解鎖（礦石）</span>
-                      ) : null}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={rule.enabled && !locked}
-                      disabled={locked}
-                      onChange={() => game.toggleAutomation(rule.id)}
-                    />
-                  </label>
-                )
-              })}
+              <div className="auto-toggle-grid">
+                {state.automations.map((rule) => {
+                  const locked = !isAutomationUnlocked(state, rule.kind)
+                  return (
+                    <label
+                      key={rule.id}
+                      className={
+                        locked
+                          ? 'auto-toggle-chip locked'
+                          : rule.enabled
+                            ? 'auto-toggle-chip on'
+                            : 'auto-toggle-chip'
+                      }
+                      title={locked ? '研究解鎖（礦石）' : rule.label}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={rule.enabled && !locked}
+                        disabled={locked}
+                        onChange={() => game.toggleAutomation(rule.id)}
+                      />
+                      <span className="auto-toggle-label">{rule.label}</span>
+                      {locked ? <span className="auto-toggle-lock">鎖</span> : null}
+                    </label>
+                  )
+                })}
+              </div>
             </div>
           </section>
         ) : null}
