@@ -751,6 +751,15 @@ textarea {
   font-family: var(--font-display);
 }
 
+.flee-boss-btn {
+  width: 100%;
+  margin-top: 2px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  border-color: rgba(255, 122, 89, 0.45);
+  color: #ffb39a;
+}
+
 .explore-actions .secondary-btn,
 .explore-actions .harvest-btn {
   display: flex;

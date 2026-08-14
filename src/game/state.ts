@@ -1163,7 +1163,7 @@ export function getBossDamage(state: GameState): BN {
 }
 
 /** 擊破 Boss 後，要等多耐先可以再召喚 */
-export const BOSS_SPAWN_LOCK_MS = 1000
+export const BOSS_SPAWN_LOCK_MS = 500
 
 /** 打緊 Boss 時唔可以推進關卡（打完可即掘礦） */
 export function canAdvanceStage(state: GameState): boolean {

@@ -274,6 +274,17 @@ export default function App() {
                         {formatBN(state.activeBoss.maxHp)}
                       </span>
                     </div>
+                    <button
+                      type="button"
+                      className="ghost-btn flee-boss-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        game.fleeBoss()
+                        setPulse((p) => p + 1)
+                      }}
+                    >
+                      撤退離開（無獎勵）
+                    </button>
                   </div>
                 ) : (
                   <div className="boss-hud">
@@ -302,20 +313,8 @@ export default function App() {
               </div>
             </div>
 
-            <div className="explore-actions">
-              {state.activeBoss ? (
-                <button
-                  type="button"
-                  className="secondary-btn flee-boss-btn"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    game.fleeBoss()
-                    setPulse((p) => p + 1)
-                  }}
-                >
-                  撤退離開 Boss（無獎勵）
-                </button>
-              ) : (
+            {!state.activeBoss ? (
+              <div className="explore-actions">
                 <button
                   type="button"
                   className="secondary-btn spawn-boss-btn"
@@ -327,13 +326,15 @@ export default function App() {
                 >
                   {(() => {
                     if (!canSpawnBoss(state)) {
-                      const sec = Math.max(
+                      const remain = Math.max(
                         0,
-                        Math.ceil(
-                          ((state.bossSpawnLockUntil ?? 0) - Date.now()) / 1000,
-                        ),
+                        ((state.bossSpawnLockUntil ?? 0) - Date.now()) / 1000,
                       )
-                      return `召喚冷卻 ${sec}s`
+                      const sec =
+                        remain >= 1
+                          ? `${Math.ceil(remain)}s`
+                          : `${remain.toFixed(1)}s`
+                      return `召喚冷卻 ${sec}`
                     }
                     const lv = state.bossKills + 1
                     const dust = bossStardustReward(lv)
@@ -342,8 +343,8 @@ export default function App() {
                     }`
                   })()}
                 </button>
-              )}
-            </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
