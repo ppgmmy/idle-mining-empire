@@ -1,5 +1,6 @@
 import { bn, parseBN, serializeBN, type BN } from './bigNumber'
 import {
+  AUTOMATION_RESEARCH_ID,
   buildChallengeOffer,
   challengeOfferId,
   createInitialState,
@@ -48,13 +49,28 @@ function serialize(state: GameState): SerializedGameState {
 function migrateAutomations(
   raw: AutomationRule[] | undefined,
   defaults: AutomationRule[],
+  researchLevels: Record<string, number>,
+  macrosUnlocked: boolean,
 ): AutomationRule[] {
   const byId = new Map((raw ?? []).map((a) => [a.id, a]))
+  const byKind = new Map(
+    (raw ?? [])
+      .filter((a) => a?.kind)
+      .map((a) => [a.kind, a]),
+  )
   return defaults.map((def) => {
-    const existing = byId.get(def.id) as
+    const existing = (byId.get(def.id) ?? byKind.get(def.kind)) as
       | (Omit<AutomationRule, 'kind'> & { kind?: string })
       | undefined
-    if (!existing) return { ...def }
+    const researchUnlocked =
+      macrosUnlocked ||
+      (researchLevels['macro-kernel'] ?? 0) >= 1 ||
+      (researchLevels[AUTOMATION_RESEARCH_ID[def.kind]] ?? 0) >= 1
+
+    if (!existing) {
+      // 舊存檔缺此項（例如自動設施強化）：研究已買就直接開掣
+      return { ...def, enabled: researchUnlocked }
+    }
     let kind: AutomationRule['kind'] = def.kind
     if (existing.kind === 'autoUpgrade' && def.id === 'auto-miner') kind = 'autoMiner'
     else if (
@@ -215,7 +231,12 @@ function deserialize(raw: SerializedGameState): GameState {
     },
     challengeCleared,
     challengeRecords,
-    automations: migrateAutomations(raw.automations, base.automations),
+    automations: migrateAutomations(
+      raw.automations,
+      base.automations,
+      researchLevels,
+      macrosUnlocked,
+    ),
     bossKills: raw.bossKills ?? 0,
     evolutionCount: Math.max(0, Number(raw.evolutionCount ?? 0) || 0),
     evolutionPower: (() => {

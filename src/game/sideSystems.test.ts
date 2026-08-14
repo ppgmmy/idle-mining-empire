@@ -302,15 +302,13 @@ describe('side systems', () => {
     expect(state.stardust.gt(0)).toBe(true)
   })
 
-  it('research has dedicated click/idle nodes; singularity buffs all three', () => {
-    const pulse = RESEARCH_TREE.find((n) => n.id === 'pulse-click')!
-    const drill = RESEARCH_TREE.find((n) => n.id === 'auto-drill')!
+  it('singularity ledger buffs click, idle and offline', () => {
     const ledger = RESEARCH_TREE.find((n) => n.id === 'singularity-ledger')!
-    expect(pulse.effectPerLevel.clickMult).toBeGreaterThan(0)
-    expect(drill.effectPerLevel.idleRate).toBeGreaterThan(0)
     expect(ledger.effectPerLevel.clickMult).toBeGreaterThan(0)
     expect(ledger.effectPerLevel.idleRate).toBeGreaterThan(0)
     expect(ledger.effectPerLevel.offlineBonus).toBeGreaterThan(0)
+    expect(RESEARCH_TREE.some((n) => n.id === 'pulse-click')).toBe(false)
+    expect(RESEARCH_TREE.some((n) => n.id === 'auto-drill')).toBe(false)
     for (const node of RESEARCH_TREE) {
       expect(node.effectPerLevel.minePower ?? 0).toBe(0)
     }
@@ -323,11 +321,11 @@ describe('side systems', () => {
       affixes: [{ id: 'clickMult' as const, label: '點擊倍率', value: 0.5 }],
     }
     let state = createInitialState()
-    const node = RESEARCH_TREE.find((n) => n.id === 'pulse-click')!
+    const node = RESEARCH_TREE.find((n) => n.id === 'singularity-ledger')!
     const per = node.effectPerLevel.clickMult ?? 0
     state = {
       ...state,
-      researchLevels: { 'pulse-click': 2 },
+      researchLevels: { 'singularity-ledger': 2 },
       gear: [gear],
       equipped: { gloves: 'g1' },
       challengeRecords: [

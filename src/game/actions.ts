@@ -19,6 +19,7 @@ import {
   DRILL_COST_GROWTH,
   emptyChallengeCleared,
   emptyFacilities,
+  ensureAutomations,
   evolutionMult,
   nextEvolutionPower,
   facilityCost,
@@ -294,13 +295,11 @@ export function buyResearch(state: GameState, id: string): GameState {
     }
   }
   if (node.unlocksAutomation && level === 0) {
-    // 首次解鎖時順便打開對應開關，方便即用
-    next = {
-      ...next,
-      automations: next.automations.map((a) =>
-        a.kind === node.unlocksAutomation ? { ...a, enabled: true } : a,
-      ),
-    }
+    const kind = node.unlocksAutomation
+    const automations = ensureAutomations(next.automations).map((a) =>
+      a.kind === kind ? { ...a, enabled: true } : a,
+    )
+    next = { ...next, automations }
   }
   return next
 }
@@ -326,7 +325,10 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
     researchLevels,
     macrosUnlocked: true,
     automationLines: Math.max(1, state.automationLines),
-    automations: state.automations.map((a) => ({ ...a, enabled: true })),
+    automations: ensureAutomations(state.automations).map((a) => ({
+      ...a,
+      enabled: true,
+    })),
     craftLevel: Math.max(state.craftLevel, ADMIN_CRAFT_LEVEL),
     crystals: state.crystals.add(bn(1000)),
     stardust: state.stardust.add(bn(500)),
@@ -560,12 +562,13 @@ export function describeRebirthNotice(
 export function toggleAutomation(state: GameState, id: string): GameState {
   const challenge = getActiveChallenge(state)
   if (challenge?.rule === 'noAutomation') return state
-  const target = state.automations.find((a) => a.id === id)
+  const automations = ensureAutomations(state.automations)
+  const target = automations.find((a) => a.id === id)
   if (!target) return state
   if (!isAutomationUnlocked(state, target.kind)) return state
   return {
     ...state,
-    automations: state.automations.map((a) =>
+    automations: automations.map((a) =>
       a.id === id ? { ...a, enabled: !a.enabled } : a,
     ),
   }
@@ -631,7 +634,39 @@ function runAutomations(state: GameState): GameState {
   const challenge = getActiveChallenge(state)
   if (challenge?.rule === 'noAutomation') return state
 
-  let next = state
+  let next: GameState = {
+    ...state,
+    automations: ensureAutomations(state.automations),
+  }
+  for (const rule of next.automations) {
+    if (!rule.enabled) continue
+
+    // 設施先跑：避免自動礦工／鑽頭把礦石花到低於設施價而永遠升唔到
+    if (rule.kind === 'autoFacility') {
+      if (!isAutomationUnlocked(next, 'autoFacility')) continue
+      let buys = 0
+      let progressed = true
+      while (buys < AUTO_BUY_PER_TICK && progressed) {
+        progressed = false
+        for (const def of FACILITIES) {
+          if (buys >= AUTO_BUY_PER_TICK) break
+          if (!def.unlocked(next)) continue
+          const level = facilityLevel(next, def.id)
+          const cost = facilityCost(def, level)
+          const need = cost.mul(
+            Number.isFinite(rule.threshold) ? Math.max(0, rule.threshold) : 1,
+          )
+          if (next.ore.lt(need)) continue
+          const bought = buyFacility(next, def.id)
+          if (bought === next) continue
+          next = bought
+          buys += 1
+          progressed = true
+        }
+      }
+    }
+  }
+
   for (const rule of next.automations) {
     if (!rule.enabled) continue
 
@@ -660,27 +695,6 @@ function runAutomations(state: GameState): GameState {
         if (bought === next) break
         next = bought
         buys += 1
-      }
-    }
-
-    if (rule.kind === 'autoFacility') {
-      if (!isAutomationUnlocked(next, 'autoFacility')) continue
-      let buys = 0
-      let progressed = true
-      while (buys < AUTO_BUY_PER_TICK && progressed) {
-        progressed = false
-        for (const def of FACILITIES) {
-          if (buys >= AUTO_BUY_PER_TICK) break
-          if (!def.unlocked(next)) continue
-          const level = facilityLevel(next, def.id)
-          const cost = facilityCost(def, level)
-          if (next.ore.lt(cost.mul(rule.threshold))) continue
-          const bought = buyFacility(next, def.id)
-          if (bought === next) continue
-          next = bought
-          buys += 1
-          progressed = true
-        }
       }
     }
 

@@ -2,6 +2,7 @@ import { bn, formatBN, ONE, ZERO, parseBN, type BN } from './bigNumber'
 import type {
   Affix,
   AffixId,
+  AutomationRule,
   ChallengeOffer,
   ChallengeReward,
   ChallengeRule,
@@ -15,28 +16,10 @@ import type {
 import { AFFIX_META, QUALITY_BANDS, RARITY_ORDER, SLOT_ICONS, SLOT_META } from './types'
 
 /**
- * 全研究樹：點擊／閒置各有專精升級；奇點帳本三者皆加（耗晶體＋星塵）。
+ * 全研究樹：自動化解鎖（礦石）＋奇點帳本（晶體＋星塵，點擊／閒置／離線皆加）。
  * 開採力同時乘點擊+閒置，研究唔再用。
  */
 export const RESEARCH_TREE: ResearchNode[] = [
-  {
-    id: 'pulse-click',
-    name: '脈衝點擊',
-    desc: '點擊倍率專精升級',
-    branch: 'active',
-    baseCost: 3,
-    costGrowth: 1.7,
-    effectPerLevel: { clickMult: 0.06 },
-  },
-  {
-    id: 'auto-drill',
-    name: '自動鑽頭',
-    desc: '閒置產量專精升級（每秒自動）',
-    branch: 'idle',
-    baseCost: 5,
-    costGrowth: 1.72,
-    effectPerLevel: { idleRate: 0.05 },
-  },
   {
     id: 'auto-miner',
     name: '自動請礦工',
@@ -807,6 +790,54 @@ export function blastStats(level: number): { chance: number; mult: BN } {
   }
 }
 
+export const DEFAULT_AUTOMATIONS: AutomationRule[] = [
+  {
+    id: 'auto-miner',
+    label: '自動請礦工',
+    enabled: false,
+    kind: 'autoMiner',
+    threshold: 1,
+  },
+  {
+    id: 'auto-drill',
+    label: '自動買鑽頭',
+    enabled: false,
+    kind: 'autoDrill',
+    threshold: 1,
+  },
+  {
+    id: 'auto-facility',
+    label: '自動設施強化',
+    enabled: false,
+    kind: 'autoFacility',
+    threshold: 1,
+  },
+  {
+    id: 'auto-rebirth',
+    label: '達標即重生',
+    enabled: false,
+    kind: 'autoRebirth',
+    threshold: 0,
+  },
+]
+
+/** 舊存檔缺項時補齊全部自動化規則（含自動設施強化） */
+export function ensureAutomations(
+  rules: AutomationRule[] | undefined,
+): AutomationRule[] {
+  const byId = new Map((rules ?? []).map((a) => [a.id, a]))
+  const byKind = new Map((rules ?? []).map((a) => [a.kind, a]))
+  return DEFAULT_AUTOMATIONS.map((def) => {
+    const existing = byId.get(def.id) ?? byKind.get(def.kind)
+    if (!existing) return { ...def }
+    return {
+      ...def,
+      enabled: Boolean(existing.enabled),
+      threshold: existing.threshold ?? def.threshold,
+    }
+  })
+}
+
 export function createInitialState(now = Date.now()): GameState {
   return {
     version: 1,
@@ -830,36 +861,7 @@ export function createInitialState(now = Date.now()): GameState {
     equipped: {},
     challengeCleared: emptyChallengeCleared(),
     challengeRecords: [],
-    automations: [
-      {
-        id: 'auto-miner',
-        label: '自動請礦工',
-        enabled: false,
-        kind: 'autoMiner',
-        threshold: 1,
-      },
-      {
-        id: 'auto-drill',
-        label: '自動買鑽頭',
-        enabled: false,
-        kind: 'autoDrill',
-        threshold: 1,
-      },
-      {
-        id: 'auto-facility',
-        label: '自動設施強化',
-        enabled: false,
-        kind: 'autoFacility',
-        threshold: 1,
-      },
-      {
-        id: 'auto-rebirth',
-        label: '達標即重生',
-        enabled: false,
-        kind: 'autoRebirth',
-        threshold: 0,
-      },
-    ],
+    automations: DEFAULT_AUTOMATIONS.map((a) => ({ ...a })),
     activeChallengeId: null,
     bossKills: 0,
     activeBoss: null,
@@ -965,7 +967,7 @@ export function researchStardustUpgradeCost(
   return bn(base).mul(bn(growth).pow(currentLevel))
 }
 
-const AUTOMATION_RESEARCH_ID: Record<
+export const AUTOMATION_RESEARCH_ID: Record<
   'autoMiner' | 'autoDrill' | 'autoFacility' | 'autoRebirth',
   string
 > = {

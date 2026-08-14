@@ -125,12 +125,12 @@ describe('progression', () => {
 
   it('research spends crystals with geometric cost growth', () => {
     let state = createInitialState()
-    state = { ...state, crystals: bn(1e6) }
-    state = buyResearch(state, 'pulse-click')
-    expect(state.researchLevels['pulse-click']).toBe(1)
+    state = { ...state, crystals: bn(1e6), stardust: bn(1e6) }
+    state = buyResearch(state, 'singularity-ledger')
+    expect(state.researchLevels['singularity-ledger']).toBe(1)
     const afterFirst = state.crystals
-    state = buyResearch(state, 'pulse-click')
-    expect(state.researchLevels['pulse-click']).toBe(2)
+    state = buyResearch(state, 'singularity-ledger')
+    expect(state.researchLevels['singularity-ledger']).toBe(2)
     expect(state.crystals.lt(afterFirst)).toBe(true)
 
     state = { ...state, ore: bn(1e6) }
@@ -185,6 +185,37 @@ describe('progression', () => {
     expect(facilityLevel(state, 'pulse')).toBeGreaterThan(before)
   })
 
+  it('auto-facility still upgrades when auto-miner would drain ore first', () => {
+    let state = createInitialState()
+    state = {
+      ...state,
+      ore: bn(5_000),
+      minerCost: bn(100),
+      researchLevels: { 'auto-facility': 1, 'auto-miner': 1 },
+      automations: state.automations.map((a) =>
+        a.kind === 'autoFacility' || a.kind === 'autoMiner'
+          ? { ...a, enabled: true }
+          : a,
+      ),
+    }
+    const before = facilityLevel(state, 'pulse')
+    state = tick(state, 0.2)
+    expect(facilityLevel(state, 'pulse')).toBeGreaterThan(before)
+  })
+
+  it('buyResearch restores missing auto-facility switch', () => {
+    let state = createInitialState()
+    state = {
+      ...state,
+      ore: bn(60_000),
+      automations: state.automations.filter((a) => a.kind !== 'autoFacility'),
+    }
+    state = buyResearch(state, 'auto-facility')
+    const rule = state.automations.find((a) => a.kind === 'autoFacility')
+    expect(rule).toBeTruthy()
+    expect(rule?.enabled).toBe(true)
+  })
+
   it('offline gains respect time and stay finite', () => {
     const now = Date.now()
     let state = createInitialState(now - 60_000)
@@ -204,7 +235,7 @@ describe('progression', () => {
       rebirthMult: bn(10),
       crystals: bn(500),
       stardust: bn(80),
-      researchLevels: { 'pulse-click': 5 },
+      researchLevels: { 'singularity-ledger': 5 },
       gear: [
         {
           id: 'g1',

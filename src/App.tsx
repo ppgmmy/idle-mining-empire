@@ -42,6 +42,7 @@ import {
   maxCraftRarityIndex,
   rebirthRequirement,
   RESEARCH_TREE,
+  ensureAutomations,
   isAutomationUnlocked,
   researchLevel,
   researchUpgradeCost,
@@ -539,7 +540,7 @@ export default function App() {
             <div className="stack muted-block auto-block">
               <h3>自動化</h3>
               <div className="auto-toggle-grid">
-                {state.automations.map((rule) => {
+                {ensureAutomations(state.automations).map((rule) => {
                   const locked = !isAutomationUnlocked(state, rule.kind)
                   return (
                     <label

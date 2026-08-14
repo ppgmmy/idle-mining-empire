@@ -1834,8 +1834,17 @@ textarea {
 .research-panel .auto-block {
   margin-top: 8px;
   margin-bottom: 0;
-  padding-top: 8px;
-  padding-bottom: 0;
+  padding-top: 10px;
+  padding-bottom: 2px;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 18, 28, 0) 0%,
+    rgba(12, 18, 28, 0.92) 18%,
+    rgba(12, 18, 28, 0.98) 100%
+  );
 }
 
 .research-panel .auto-block h3 {
