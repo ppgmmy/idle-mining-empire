@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LeaderboardPanel } from './components/LeaderboardPanel'
 import { MineCanvas } from './components/MineCanvas'
 import { ResourceBar } from './components/ResourceBar'
 import { TabNav } from './components/TabNav'
-import { canUpgradeRarity, craftGearCost, nextRarity, rerollGearCost, sellGearRefund } from './game/actions'
+import { canUpgradeRarity, craftGearCost, rerollGearCost, sellGearRefund } from './game/actions'
 import { bn, formatBN } from './game/bigNumber'
 import {
   affixCount,
@@ -82,6 +82,7 @@ export default function App() {
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
   const [challengeLogOpen, setChallengeLogOpen] = useState(false)
   const [gearFilter, setGearFilter] = useState<GearSlot | null>(null)
+  const [gearSheetOpen, setGearSheetOpen] = useState(false)
   const { state } = game
   const previewCraftLevel = oddsCraftLevel ?? state.craftLevel
   const craftOdds = craftRarityChances(previewCraftLevel)
@@ -98,15 +99,34 @@ export default function App() {
   const filteredGear = gearFilter
     ? state.gear.filter((g) => g.slot === gearFilter)
     : state.gear
-  const selectGearSlot = (slot: GearSlot) => {
-    setGearFilter((prev) => (prev === slot ? null : slot))
-    queueMicrotask(() => {
-      document.getElementById('gear-inventory')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      })
-    })
+  const sortedGear = filteredGear.slice().sort((a, b) => {
+    const aEq = state.equipped[a.slot] === a.id
+    const bEq = state.equipped[b.slot] === b.id
+    if (aEq !== bEq) return aEq ? -1 : 1
+    const byPower = gearItemPower(b) - gearItemPower(a)
+    if (Math.abs(byPower) > 1e-9) return byPower
+    const byRarity = rarityTierNumber(b.rarity) - rarityTierNumber(a.rarity)
+    if (byRarity !== 0) return byRarity
+    return state.gear.indexOf(b) - state.gear.indexOf(a)
+  })
+  const openGearSheet = (slot: GearSlot | null = null) => {
+    setGearFilter(slot)
+    setGearSheetOpen(true)
   }
+
+  useEffect(() => {
+    if (!gearSheetOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setGearSheetOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [gearSheetOpen])
 
   if (!game.ready) {
     return <div className="boot">載入礦場中…</div>
@@ -565,13 +585,13 @@ export default function App() {
         ) : null}
 
         {game.tab === 'gear' && canAccessTab('gear', state.rebirthCount) ? (
-          <section className="panel">
-            <h2>裝備詞條</h2>
+          <section className="panel gear-hub">
+            <h2>裝備</h2>
             <p className="lede">
-              撳槽位篩選該槽裝備再比較穿脫 · 隨機打造／晉升／重鑄皆耗星塵 · 庫存{' '}
+              撳槽位或「裝備表」睇晒庫存 · 隨機打造／晉升／重鑄用星塵 ·{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
-            <div className="gear-doll" aria-label="裝備槽位篩選">
+            <div className="gear-doll" aria-label="裝備槽位">
               {GEAR_SLOTS.map((slot) => {
                 const eqId = state.equipped[slot]
                 const item = eqId
@@ -579,35 +599,23 @@ export default function App() {
                   : undefined
                 const shown = item ? ensureGearIdentity(item) : null
                 const count = state.gear.filter((g) => g.slot === slot).length
-                const selected = gearFilter === slot
                 return (
                   <button
                     key={slot}
                     type="button"
-                    className={[
-                      'gear-doll-slot',
-                      shown ? 'gear-doll-slot-filled' : '',
-                      selected ? 'gear-doll-slot-selected' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
+                    className={
+                      shown ? 'gear-doll-slot gear-doll-slot-filled' : 'gear-doll-slot'
+                    }
                     style={
                       shown
                         ? {
                             borderColor: gearAccent(shown),
-                            boxShadow: selected
-                              ? `0 0 0 2px ${gearAccent(shown)}`
-                              : `0 0 0 1px ${gearAccent(shown)}33`,
+                            boxShadow: `0 0 0 1px ${gearAccent(shown)}33`,
                           }
                         : undefined
                     }
-                    aria-pressed={selected}
-                    title={
-                      selected
-                        ? `取消篩選${SLOT_META[slot].label}`
-                        : `睇晒全部${SLOT_META[slot].label}（${count}）`
-                    }
-                    onClick={() => selectGearSlot(slot)}
+                    title={`打開${SLOT_META[slot].label}表（${count}）`}
+                    onClick={() => openGearSheet(slot)}
                   >
                     <span className="gear-doll-icon" aria-hidden>
                       {shown ? gearIcon(shown) : '·'}
@@ -617,35 +625,8 @@ export default function App() {
                       {count > 0 ? ` ·${count}` : ''}
                     </span>
                     <span className="gear-doll-name">
-                      {shown ? shown.name.replace(/·管理$/, '') : '空／揀槽'}
+                      {shown ? shown.name.replace(/·管理$/, '') : '空'}
                     </span>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="gear-filter-bar" role="toolbar" aria-label="裝備槽篩選">
-              <button
-                type="button"
-                className={gearFilter == null ? 'gear-filter-chip on' : 'gear-filter-chip'}
-                aria-pressed={gearFilter == null}
-                onClick={() => setGearFilter(null)}
-              >
-                全部 · {state.gear.length}
-              </button>
-              {GEAR_SLOTS.map((slot) => {
-                const count = state.gear.filter((g) => g.slot === slot).length
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    className={
-                      gearFilter === slot ? 'gear-filter-chip on' : 'gear-filter-chip'
-                    }
-                    aria-pressed={gearFilter === slot}
-                    disabled={count === 0}
-                    onClick={() => selectGearSlot(slot)}
-                  >
-                    {SLOT_META[slot].label} · {count}
                   </button>
                 )
               })}
@@ -667,7 +648,8 @@ export default function App() {
                     disabled={!canCraft || !canAfford}
                     onClick={() => {
                       const made = game.craftGear()
-                      if (made) setGearFilter(made.slot)
+                      if (made) openGearSheet(made.slot)
+                      else setGearSheetOpen(true)
                     }}
                   >
                     隨機打造一件
@@ -680,6 +662,17 @@ export default function App() {
                           : `欠 ${formatBN(cost.sub(state.stardust))} 星塵`}
                     </span>
                   </button>
+                  <button
+                    type="button"
+                    className="secondary-btn gear-sheet-open-btn"
+                    onClick={() => openGearSheet(gearFilter)}
+                  >
+                    打開裝備表
+                    <span className="craft-role">大表比較 · 易睇穿脫</span>
+                    <span className="craft-cost">
+                      {state.gear.length} 件
+                    </span>
+                  </button>
                 </div>
               )
             })()}
@@ -687,21 +680,11 @@ export default function App() {
               <p className="hint">已達打造上限（最多 {gearCapacity(state)} 件），請先賣出或丟棄。</p>
             ) : null}
 
-            <div className="rarity-table-wrap">
-              <div className="gear-inventory-head">
-                <span>
-                  打造機率 · 預覽 Lv{previewCraftLevel}
-                  {previewCraftLevel === state.craftLevel ? '（目前）' : ''}
-                </span>
-                <span>
-                  最高{' '}
-                  {
-                    RARITY_LABEL[
-                      RARITY_ORDER[maxCraftRarityIndex(previewCraftLevel)]!
-                    ]
-                  }
-                </span>
-              </div>
+            <details className="rarity-table-wrap gear-odds-details">
+              <summary>
+                打造機率預覽 · Lv{previewCraftLevel}
+                {previewCraftLevel === state.craftLevel ? '（目前）' : ''}
+              </summary>
               <div className="craft-level-picker" role="listbox" aria-label="打造等級預覽">
                 {Array.from({ length: maxPreviewCraftLevel() }, (_, i) => i + 1).map(
                   (lv) => (
@@ -740,269 +723,299 @@ export default function App() {
                       .slice()
                       .reverse()
                       .map(({ rarity, chance }) => (
-                      <tr key={rarity}>
-                        <td>{rarityTierNumber(rarity)}</td>
-                        <td>
-                          <span className="rarity-name">
-                            <span
-                              className="rarity-dot"
-                              style={{ background: rarityAccent(rarity) }}
-                            />
-                            {RARITY_LABEL[rarity]}
-                          </span>
-                        </td>
-                        <td className="rarity-chance">
-                          {chance >= 0.001
-                            ? `${(chance * 100).toFixed(2)}%`
-                            : `${(chance * 100).toFixed(3)}%`}
-                        </td>
-                        <td>{affixCount(rarity)}</td>
-                        <td>{describeAffixRanges(rarity)}</td>
-                      </tr>
-                    ))}
+                        <tr key={rarity}>
+                          <td>{rarityTierNumber(rarity)}</td>
+                          <td>
+                            <span className="rarity-name">
+                              <span
+                                className="rarity-dot"
+                                style={{ background: rarityAccent(rarity) }}
+                              />
+                              {RARITY_LABEL[rarity]}
+                            </span>
+                          </td>
+                          <td className="rarity-chance">
+                            {chance >= 0.001
+                              ? `${(chance * 100).toFixed(2)}%`
+                              : `${(chance * 100).toFixed(3)}%`}
+                          </td>
+                          <td>{affixCount(rarity)}</td>
+                          <td>{describeAffixRanges(rarity)}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </details>
 
-            {state.gear.length === 0 ? (
-              <p className="hint">尚未有裝備。</p>
-            ) : (
-              <div className="gear-inventory" id="gear-inventory">
-                <div className="gear-inventory-head">
-                  <span>
-                    {gearFilter
-                      ? `${SLOT_META[gearFilter].label}（${filteredGear.length}）· 點穿戴／卸下`
-                      : `庫存全部（${state.gear.length}）· 可撳上方槽位篩選`}
-                  </span>
-                  <span>
-                    {filteredGear.length}/{gearCapacity(state)}
-                  </span>
-                </div>
-                {gearFilter && state.equipped[gearFilter] ? (
-                  <div className="row-actions gear-sell-row">
+            {gearSheetOpen ? (
+              <div
+                className="gear-sheet-backdrop"
+                role="presentation"
+                onClick={() => setGearSheetOpen(false)}
+              >
+                <div
+                  className="gear-sheet"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="裝備表"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <header className="gear-sheet-head">
+                    <div>
+                      <h3>裝備表</h3>
+                      <p>
+                        {gearFilter
+                          ? `${SLOT_META[gearFilter].label} · ${sortedGear.length} 件`
+                          : `全部 · ${sortedGear.length} 件`}
+                        {' · '}星塵 {formatBN(state.stardust)}
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      className="ghost-btn"
-                      onClick={() => {
-                        const id = state.equipped[gearFilter]
-                        if (id) game.unequipGear(id)
-                      }}
+                      className="secondary-btn gear-sheet-close"
+                      onClick={() => setGearSheetOpen(false)}
                     >
-                      卸下目前{SLOT_META[gearFilter].label}
+                      關閉
                     </button>
-                  </div>
-                ) : null}
-                {(() => {
-                  const unequipped = filteredGear.filter(
-                    (g) => state.equipped[g.slot] !== g.id,
-                  )
-                  if (unequipped.length === 0) return null
-                  const refund = unequipped.reduce(
-                    (sum, g) => sum.add(sellGearRefund(g)),
-                    bn(0),
-                  )
-                  const label = gearFilter
-                    ? SLOT_META[gearFilter].label
-                    : '未穿戴'
-                  return (
-                    <div className="row-actions gear-sell-row">
-                      <button
-                        type="button"
-                        className="secondary-btn"
-                        onClick={() => {
-                          const ok = window.confirm(
-                            gearFilter
-                              ? `賣出 ${unequipped.length} 件未穿戴${label}？\n預計收回 ${formatBN(refund)} 星塵。\n（只賣目前篩選槽）`
-                              : `賣出 ${unequipped.length} 件未穿戴裝備？\n預計收回 ${formatBN(refund)} 星塵。`,
-                          )
-                          if (ok) game.sellUnequippedGear(gearFilter ?? undefined)
-                        }}
-                      >
-                        一鍵賣未穿戴{gearFilter ? label : ''} · +{formatBN(refund)} 星塵
-                      </button>
-                    </div>
-                  )
-                })()}
-                <div className="gear-inventory-scroll">
-                  {filteredGear.length === 0 ? (
-                    <p className="hint">
-                      尚未有{SLOT_META[gearFilter!].label}，可喺上方打造。
-                    </p>
-                  ) : null}
-                  {filteredGear
-                    .slice()
-                    .sort((a, b) => {
-                      const aEq = state.equipped[a.slot] === a.id
-                      const bEq = state.equipped[b.slot] === b.id
-                      if (aEq !== bEq) return aEq ? -1 : 1
-                      const byPower = gearItemPower(b) - gearItemPower(a)
-                      if (Math.abs(byPower) > 1e-9) return byPower
-                      const byRarity =
-                        rarityTierNumber(b.rarity) - rarityTierNumber(a.rarity)
-                      if (byRarity !== 0) return byRarity
-                      return state.gear.indexOf(b) - state.gear.indexOf(a)
-                    })
-                    .map((raw) => {
-                      const item = ensureGearIdentity(raw)
-                      const cost = rerollGearCost(item)
-                      const canAfford = state.stardust.gte(cost)
-                      const upgrading = canUpgradeRarity(item.rarity)
-                      const meta = SLOT_META[item.slot]
-                      const rerolls = item.rerolls ?? 0
-                      const isEquipped = state.equipped[item.slot] === item.id
-                      const accent = gearAccent(item)
-                      const equippedPeer = (() => {
-                        const eqId = state.equipped[item.slot]
-                        if (!eqId || eqId === item.id) return null
-                        const peer = state.gear.find((g) => g.id === eqId)
-                        return peer ? ensureGearIdentity(peer) : null
-                      })()
-                      const deltaPct = gearPowerDeltaPct(item, equippedPeer)
-                      const dominant = item.affixes
-                        .slice()
-                        .sort(
-                          (a, b) =>
-                            effectiveAffixValue(item.slot, b) -
-                            effectiveAffixValue(item.slot, a),
-                        )[0]
+                  </header>
+
+                  <div className="gear-filter-bar gear-sheet-filters" role="toolbar">
+                    <button
+                      type="button"
+                      className={
+                        gearFilter == null ? 'gear-filter-chip on' : 'gear-filter-chip'
+                      }
+                      aria-pressed={gearFilter == null}
+                      onClick={() => setGearFilter(null)}
+                    >
+                      全部 · {state.gear.length}
+                    </button>
+                    {GEAR_SLOTS.map((slot) => {
+                      const count = state.gear.filter((g) => g.slot === slot).length
                       return (
-                        <article
-                          key={item.id}
+                        <button
+                          key={slot}
+                          type="button"
                           className={
-                            isEquipped ? 'gear-card gear-card-equipped' : 'gear-card'
+                            gearFilter === slot
+                              ? 'gear-filter-chip on'
+                              : 'gear-filter-chip'
                           }
-                          style={{ borderColor: accent }}
+                          aria-pressed={gearFilter === slot}
+                          disabled={count === 0}
+                          onClick={() => setGearFilter(slot)}
                         >
-                          <div className="gear-card-head">
-                            <h3>
-                              <span className="gear-name">
-                                <span
-                                  className="gear-icon"
-                                  style={{ background: `${accent}22` }}
-                                  aria-hidden
-                                >
-                                  {gearIcon(item)}
-                                </span>
-                                {isEquipped ? '● ' : ''}
-                                {item.name}
-                              </span>
-                              <span className="gear-sub">
-                                {meta.label}·{meta.role}
-                                <span className="gear-quality">
-                                  {qualityLabel(item.quality)}
-                                  {item.quality != null
-                                    ? ` ×${item.quality.toFixed(2)}`
-                                    : ''}
-                                </span>
-                                <span className="gear-power">
-                                  戰力 ×{gearItemPower(item).toFixed(2)}
-                                </span>
-                                {deltaPct != null ? (
-                                  <span
-                                    className={
-                                      deltaPct >= 0
-                                        ? 'gear-delta gear-delta-up'
-                                        : 'gear-delta gear-delta-down'
-                                    }
-                                  >
-                                    比已穿 {deltaPct >= 0 ? '+' : ''}
-                                    {deltaPct}%
-                                  </span>
-                                ) : null}
-                                {dominant ? (
-                                  <span className="gear-focus">
-                                    主看 {AFFIX_META[dominant.id].short}
-                                  </span>
-                                ) : null}
-                                <span className="rarity-inline">
-                                  {rarityTierNumber(item.rarity)}
-                                  <span
-                                    className="rarity-dot"
-                                    style={{ background: accent }}
-                                  />
-                                  {RARITY_LABEL[item.rarity]}
-                                </span>
-                              </span>
-                            </h3>
-                            <div className="gear-card-btns">
-                              {isEquipped ? (
-                                <button
-                                  type="button"
-                                  className="ghost-btn"
-                                  onClick={() => game.unequipGear(item.id)}
-                                >
-                                  卸下
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="secondary-btn"
-                                  onClick={() => game.equipGear(item.id)}
-                                >
-                                  穿戴
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="secondary-btn reroll-btn"
-                                disabled={!canAfford}
-                                onClick={() => game.rerollGear(item.id)}
-                              >
-                                {upgrading ? '晉升' : '重鑄'} · {formatBN(cost)} 星塵
-                              </button>
-                              <button
-                                type="button"
-                                className="ghost-btn"
-                                onClick={() => {
-                                  const ok = window.confirm(
-                                    `確定丟棄「${item.name}」（${RARITY_LABEL[item.rarity]}）？\n丟咗就冇得返。`,
-                                  )
-                                  if (ok) game.dropGear(item.id)
-                                }}
-                              >
-                                丟
-                              </button>
-                            </div>
-                          </div>
-                          <ul className="affix-list">
-                            {item.affixes.map((a) => {
-                              const info = AFFIX_META[a.id]
-                              const primary = isSlotPrimary(item.slot, a.id)
-                              const shown = effectiveAffixValue(item.slot, a)
-                              return (
-                                <li
-                                  key={`${item.id}-${a.id}-${a.value}`}
-                                  className={primary ? 'affix-primary' : 'affix-secondary'}
-                                  title={`${info.label}：${formatAffixMult(shown)}${
-                                    primary ? '' : '（副＝主 50%）'
-                                  }（${info.effect}）`}
-                                >
-                                  <span className="affix-tag">
-                                    {primary ? '主' : '副'}
-                                  </span>
-                                  <span className="affix-name">{info.short}</span>
-                                  <span className="affix-val">
-                                    {formatAffixMult(shown)}
-                                  </span>
-                                  <span className="affix-fx">{info.effect}</span>
-                                </li>
-                              )
-                            })}
-                          </ul>
-                          <p className="hint gear-card-meta">
-                            {isEquipped ? '已穿戴 · ' : '庫存 · '}
-                            {rerolls > 0 ? `重鑄×${rerolls}` : '未重鑄'}
-                            {upgrading
-                              ? ` · 晉升後本階升幅 ${describeAffixRanges(nextRarity(item.rarity))}`
-                              : ' · 滿階'}
-                          </p>
-                        </article>
+                          {SLOT_META[slot].label} · {count}
+                        </button>
                       )
                     })}
+                  </div>
+
+                  <div className="gear-sheet-actions">
+                    {gearFilter && state.equipped[gearFilter] ? (
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => {
+                          const id = state.equipped[gearFilter]
+                          if (id) game.unequipGear(id)
+                        }}
+                      >
+                        卸下目前{SLOT_META[gearFilter].label}
+                      </button>
+                    ) : null}
+                    {(() => {
+                      const unequipped = sortedGear.filter(
+                        (g) => state.equipped[g.slot] !== g.id,
+                      )
+                      if (unequipped.length === 0) return null
+                      const refund = unequipped.reduce(
+                        (sum, g) => sum.add(sellGearRefund(g)),
+                        bn(0),
+                      )
+                      const label = gearFilter
+                        ? SLOT_META[gearFilter].label
+                        : '未穿戴'
+                      return (
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          onClick={() => {
+                            const ok = window.confirm(
+                              gearFilter
+                                ? `賣出 ${unequipped.length} 件未穿戴${label}？\n預計收回 ${formatBN(refund)} 星塵。`
+                                : `賣出 ${unequipped.length} 件未穿戴裝備？\n預計收回 ${formatBN(refund)} 星塵。`,
+                            )
+                            if (ok) game.sellUnequippedGear(gearFilter ?? undefined)
+                          }}
+                        >
+                          賣未穿戴{gearFilter ? label : ''} · +{formatBN(refund)}
+                        </button>
+                      )
+                    })()}
+                  </div>
+
+                  {state.gear.length === 0 ? (
+                    <p className="hint gear-sheet-empty">尚未有裝備，先隨機打造。</p>
+                  ) : sortedGear.length === 0 ? (
+                    <p className="hint gear-sheet-empty">
+                      尚未有{SLOT_META[gearFilter!].label}。
+                    </p>
+                  ) : (
+                    <div className="gear-sheet-table-wrap">
+                      <table className="gear-sheet-table">
+                        <thead>
+                          <tr>
+                            <th>裝備</th>
+                            <th>稀有</th>
+                            <th>戰力</th>
+                            <th>詞條</th>
+                            <th>操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedGear.map((raw) => {
+                            const item = ensureGearIdentity(raw)
+                            const cost = rerollGearCost(item)
+                            const canAfford = state.stardust.gte(cost)
+                            const upgrading = canUpgradeRarity(item.rarity)
+                            const isEquipped = state.equipped[item.slot] === item.id
+                            const accent = gearAccent(item)
+                            const equippedPeer = (() => {
+                              const eqId = state.equipped[item.slot]
+                              if (!eqId || eqId === item.id) return null
+                              const peer = state.gear.find((g) => g.id === eqId)
+                              return peer ? ensureGearIdentity(peer) : null
+                            })()
+                            const deltaPct = gearPowerDeltaPct(item, equippedPeer)
+                            return (
+                              <tr
+                                key={item.id}
+                                className={isEquipped ? 'gear-row-equipped' : undefined}
+                                style={{ borderLeftColor: accent }}
+                              >
+                                <td className="gear-td-name">
+                                  <span
+                                    className="gear-icon"
+                                    style={{ background: `${accent}22` }}
+                                    aria-hidden
+                                  >
+                                    {gearIcon(item)}
+                                  </span>
+                                  <span className="gear-td-name-text">
+                                    <strong>
+                                      {isEquipped ? '● ' : ''}
+                                      {item.name}
+                                    </strong>
+                                    <small>
+                                      {SLOT_META[item.slot].label} ·{' '}
+                                      {qualityLabel(item.quality)}
+                                      {item.quality != null
+                                        ? ` ×${item.quality.toFixed(2)}`
+                                        : ''}
+                                    </small>
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="rarity-inline">
+                                    <span
+                                      className="rarity-dot"
+                                      style={{ background: accent }}
+                                    />
+                                    {RARITY_LABEL[item.rarity]}
+                                  </span>
+                                </td>
+                                <td className="gear-td-power">
+                                  <strong>×{gearItemPower(item).toFixed(2)}</strong>
+                                  {deltaPct != null ? (
+                                    <small
+                                      className={
+                                        deltaPct >= 0
+                                          ? 'gear-delta gear-delta-up'
+                                          : 'gear-delta gear-delta-down'
+                                      }
+                                    >
+                                      {deltaPct >= 0 ? '+' : ''}
+                                      {deltaPct}%
+                                    </small>
+                                  ) : isEquipped ? (
+                                    <small className="gear-focus">已穿</small>
+                                  ) : null}
+                                </td>
+                                <td className="gear-td-affix">
+                                  {item.affixes.map((a) => {
+                                    const primary = isSlotPrimary(item.slot, a.id)
+                                    const shown = effectiveAffixValue(item.slot, a)
+                                    return (
+                                      <span
+                                        key={`${item.id}-${a.id}-${a.value}`}
+                                        className={
+                                          primary
+                                            ? 'gear-affix-chip primary'
+                                            : 'gear-affix-chip'
+                                        }
+                                        title={AFFIX_META[a.id].effect}
+                                      >
+                                        {primary ? '主' : '副'}
+                                        {AFFIX_META[a.id].short}
+                                        {formatAffixMult(shown)}
+                                      </span>
+                                    )
+                                  })}
+                                </td>
+                                <td className="gear-td-actions">
+                                  {isEquipped ? (
+                                    <button
+                                      type="button"
+                                      className="ghost-btn"
+                                      onClick={() => game.unequipGear(item.id)}
+                                    >
+                                      卸下
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="secondary-btn"
+                                      onClick={() => game.equipGear(item.id)}
+                                    >
+                                      穿戴
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="secondary-btn"
+                                    disabled={!canAfford}
+                                    onClick={() => game.rerollGear(item.id)}
+                                  >
+                                    {upgrading ? '晉升' : '重鑄'}
+                                    <span className="gear-action-cost">
+                                      {formatBN(cost)}
+                                    </span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="ghost-btn"
+                                    onClick={() => {
+                                      const ok = window.confirm(
+                                        `確定丟棄「${item.name}」？`,
+                                      )
+                                      if (ok) game.dropGear(item.id)
+                                    }}
+                                  >
+                                    丟
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            ) : null}
           </section>
         ) : null}
 

@@ -1154,8 +1154,238 @@ textarea {
   margin-bottom: 10px;
 }
 
-.craft-random-btn {
+@media (min-width: 520px) {
+  .gear-craft-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.craft-random-btn,
+.gear-sheet-open-btn {
   width: 100%;
+}
+
+.gear-odds-details {
+  margin-top: 10px;
+}
+
+.gear-odds-details > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 6px 0;
+}
+
+.gear-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+}
+
+.gear-sheet {
+  width: min(960px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #121c28, #0b121a 55%, #0a1018);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.gear-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gear-sheet-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.gear-sheet-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.gear-sheet-close {
+  flex-shrink: 0;
+  padding: 10px 14px;
+}
+
+.gear-sheet-filters {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.gear-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gear-sheet-empty {
+  margin: 12px 0;
+  text-align: center;
+}
+
+.gear-sheet-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gear-sheet-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+}
+
+.gear-sheet-table th,
+.gear-sheet-table td {
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gear-sheet-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #152131;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.gear-sheet-table tbody tr {
+  border-left: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.gear-sheet-table tbody tr.gear-row-equipped {
+  background: rgba(87, 199, 178, 0.1);
+}
+
+.gear-td-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.gear-td-name-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gear-td-name-text strong {
+  font-size: 0.84rem;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.gear-td-name-text small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.gear-td-power {
+  white-space: nowrap;
+}
+
+.gear-td-power strong {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.gear-td-power small {
+  display: inline-block;
+  margin-top: 2px;
+}
+
+.gear-td-affix {
+  min-width: 120px;
+}
+
+.gear-affix-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 2px 4px 2px 0;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.gear-affix-chip.primary {
+  color: var(--text);
+  background: rgba(240, 180, 41, 0.14);
+}
+
+.gear-td-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.gear-td-actions .secondary-btn,
+.gear-td-actions .ghost-btn {
+  padding: 8px 10px;
+  font-size: 0.72rem;
+}
+
+.gear-action-cost {
+  display: block;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .gear-sheet {
+    padding: 10px 8px;
+    border-radius: 12px;
+  }
+
+  .gear-sheet-table {
+    font-size: 0.78rem;
+  }
+
+  .gear-sheet-table th:nth-child(2),
+  .gear-sheet-table td:nth-child(2) {
+    display: none;
+  }
+
+  .gear-td-name {
+    min-width: 110px;
+  }
+
+  .gear-td-actions {
+    flex-direction: column;
+  }
 }
 
 .gear-doll-slot:hover {
