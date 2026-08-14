@@ -291,9 +291,19 @@ describe('side systems', () => {
     expect(sumAffix(state, 'clickMult')).toBeCloseTo(0.875)
   })
 
-  it('sellUnequippedGear keeps equipped and refunds stardust', () => {
-    const a = { ...rollGear('gloves'), id: 'g1', rarity: 'common' as const }
-    const b = { ...rollGear('armor'), id: 'g2', rarity: 'common' as const }
+  it('sellUnequippedGear refunds 90% of stardust invested', () => {
+    const a = {
+      ...rollGear('gloves'),
+      id: 'g1',
+      rarity: 'common' as const,
+      stardustInvested: '200',
+    }
+    const b = {
+      ...rollGear('armor'),
+      id: 'g2',
+      rarity: 'common' as const,
+      stardustInvested: '200',
+    }
     let state = createInitialState()
     state = {
       ...state,
@@ -304,7 +314,22 @@ describe('side systems', () => {
     state = sellUnequippedGear(state)
     expect(state.gear).toHaveLength(1)
     expect(state.gear[0].id).toBe('g1')
-    expect(state.stardust.gt(0)).toBe(true)
+    expect(state.stardust.eq(180)).toBe(true)
+  })
+
+  it('craft then sell refunds 90% of craft cost', () => {
+    let state = createInitialState()
+    state = { ...state, stardust: bn(1000), gear: [], equipped: {} }
+    state = craftGear(state)
+    expect(state.gear).toHaveLength(1)
+    const invested = state.gear[0]!.stardustInvested
+    expect(invested).toBe('200')
+    const itemId = state.gear[0]!.id
+    // 卸下先可以賣
+    state = unequipGear(state, itemId)
+    state = sellUnequippedGear(state)
+    expect(state.gear).toHaveLength(0)
+    expect(state.stardust.eq(bn(1000).sub(200).add(180))).toBe(true)
   })
 
   it('singularity ledger buffs click, idle and offline', () => {

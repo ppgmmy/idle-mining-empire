@@ -1,4 +1,4 @@
-import { bn, formatBN, ONE, ZERO, parseBN, type BN } from './bigNumber'
+import { bn, formatBN, ONE, ZERO, parseBN, serializeBN, type BN } from './bigNumber'
 import type {
   Affix,
   AffixId,
@@ -585,6 +585,48 @@ export function rerollGearCost(item: GearItem): BN {
   const rerolls = item.rerolls ?? 0
   const base = bn(48).mul(bn(1.9).pow(i))
   return base.mul(bn(2.15).pow(rerolls))
+}
+
+/** 打造固定星塵價 */
+export const GEAR_CRAFT_STARDUST = 200
+/** 出售退回累計付出嘅比例 */
+export const GEAR_SELL_REFUND_RATE = 0.9
+
+/** 舊存檔無投資紀錄時，按打造價＋歷次晉升／重鑄成本估算 */
+function estimateLegacyGearStardustInvested(item: GearItem): BN {
+  let total = bn(GEAR_CRAFT_STARDUST)
+  const end = Math.max(0, rarityIndex(item.rarity))
+  const rerolls = Math.max(0, item.rerolls ?? 0)
+  let rIdx = Math.max(0, end - rerolls)
+  for (let k = 0; k < rerolls; k++) {
+    total = total.add(
+      rerollGearCost({
+        ...item,
+        rarity: RARITY_ORDER[rIdx]!,
+        rerolls: k,
+      }),
+    )
+    if (rIdx < RARITY_ORDER.length - 1) rIdx += 1
+  }
+  return total
+}
+
+/** 呢件裝備累計付出星塵 */
+export function gearStardustInvested(item: GearItem): BN {
+  if (item.stardustInvested != null && item.stardustInvested !== '') {
+    const tracked = parseBN(item.stardustInvested)
+    if (tracked.gt(0)) return tracked
+  }
+  return estimateLegacyGearStardustInvested(item)
+}
+
+/** 出售退星塵＝累計付出 × 90%（向下取整） */
+export function sellGearRefund(item: GearItem): BN {
+  return gearStardustInvested(item).mul(GEAR_SELL_REFUND_RATE).floor()
+}
+
+export function withGearStardustInvested(item: GearItem, invested: BN): GearItem {
+  return { ...item, stardustInvested: serializeBN(invested) }
 }
 
 /** 升到下一打造等級所需打造次數（愈高愈難） */

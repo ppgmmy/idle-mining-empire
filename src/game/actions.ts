@@ -40,6 +40,10 @@ import {
   rerollGearCost,
   rollAffixes,
   rollGear,
+  sellGearRefund,
+  gearStardustInvested,
+  withGearStardustInvested,
+  GEAR_CRAFT_STARDUST,
   upgradeAffixesOnRarityUp,
   getAffixMult,
   stageMaxHp,
@@ -49,7 +53,7 @@ import {
 import { isAdmin } from './admin'
 import { grantOre, spendCrystals, spendOre, spendStardust } from './save'
 import type { FacilityId, GameState, GearSlot, TabId } from './types'
-import { GEAR_SLOTS, OFFLINE_CAP_HOURS, RARITY_ORDER, rarityTierNumber } from './types'
+import { GEAR_SLOTS, OFFLINE_CAP_HOURS, RARITY_ORDER } from './types'
 
 /** 管理員一鍵開通：研究保底等級 */
 const ADMIN_RESEARCH_FLOOR = 5
@@ -344,7 +348,10 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
       if (!equipped[slot]) equipped[slot] = existing.id
       continue
     }
-    const item = rollGear(slot, ADMIN_CRAFT_LEVEL, { tag: 'admin' })
+    const item = withGearStardustInvested(
+      rollGear(slot, ADMIN_CRAFT_LEVEL, { tag: 'admin' }),
+      bn(GEAR_CRAFT_STARDUST),
+    )
     // 管理裝備強制頂階
     const topItem = {
       ...item,
@@ -359,7 +366,7 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
 }
 
 /** 打造裝備：固定星塵價（唔跟件數加價） */
-export const CRAFT_GEAR_COST = 200
+export const CRAFT_GEAR_COST = GEAR_CRAFT_STARDUST
 
 export function craftGearCost(_state?: GameState) {
   return bn(CRAFT_GEAR_COST)
@@ -371,7 +378,7 @@ export function craftGear(state: GameState): GameState {
   const paid = spendStardust(state, cost)
   if (!paid) return state
   const slot = GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)]!
-  const item = rollGear(slot, paid.craftLevel)
+  const item = withGearStardustInvested(rollGear(slot, paid.craftLevel), cost)
   // 該槽未穿戴先自動裝上；已有穿戴則只入庫存
   const equipped = { ...paid.equipped }
   if (!equipped[slot]) equipped[slot] = item.id
@@ -415,11 +422,7 @@ export function dropGear(state: GameState, gearId: string): GameState {
   }
 }
 
-/** 一鍵賣未穿戴裝備，按稀有度回星塵 */
-export function sellGearRefund(item: { rarity: (typeof RARITY_ORDER)[number] }) {
-  return bn(8).mul(bn(1.35).pow(rarityTierNumber(item.rarity) - 1))
-}
-
+/** 一鍵賣未穿戴裝備，退回累計星塵付出嘅 90% */
 export function sellUnequippedGear(
   state: GameState,
   slot?: GearSlot,
@@ -451,21 +454,25 @@ export function rerollGear(state: GameState, gearId: string): GameState {
   if (!paid) return state
   const willUpgrade = canUpgradeRarity(item.rarity)
   const rarity = nextRarity(item.rarity)
-  const nextItem = {
-    ...item,
-    rarity,
-    affixes: willUpgrade
-      ? upgradeAffixesOnRarityUp(item, rarity)
-      : rollAffixes(rarity, item.slot, item.quality ?? 1),
-    rerolls: (item.rerolls ?? 0) + 1,
-  }
+  const invested = gearStardustInvested(item).add(cost)
+  const nextItem = withGearStardustInvested(
+    {
+      ...item,
+      rarity,
+      affixes: willUpgrade
+        ? upgradeAffixesOnRarityUp(item, rarity)
+        : rollAffixes(rarity, item.slot, item.quality ?? 1),
+      rerolls: (item.rerolls ?? 0) + 1,
+    },
+    invested,
+  )
   return {
     ...paid,
     gear: paid.gear.map((g) => (g.id === gearId ? nextItem : g)),
   }
 }
 
-export { rerollGearCost, nextRarity, canUpgradeRarity }
+export { rerollGearCost, nextRarity, canUpgradeRarity, sellGearRefund }
 
 export function doRebirth(state: GameState): GameState {
   if (!canRebirth(state)) return state
