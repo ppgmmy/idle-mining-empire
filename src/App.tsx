@@ -158,23 +158,27 @@ export default function App() {
                   ? `攻擊 Boss，傷害 ${formatBN(getBossDamage(state))}`
                   : `掘礦通關，+${formatBN(getClickGain(state))}`
               }
-              onClick={() => {
-                if (state.activeBoss) {
-                  game.attackBoss()
-                } else {
-                  game.strikeStage()
-                }
+              onPointerDown={(e) => {
+                if (e.button !== 0) return
+                e.currentTarget.setPointerCapture(e.pointerId)
                 setPulse((p) => p + 1)
+                game.setMineHold(true)
+              }}
+              onPointerUp={() => game.setMineHold(false)}
+              onPointerCancel={() => game.setMineHold(false)}
+              onPointerLeave={(e) => {
+                if (e.buttons === 0) game.setMineHold(false)
               }}
               onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return
                 e.preventDefault()
-                if (state.activeBoss) {
-                  game.attackBoss()
-                } else {
-                  game.strikeStage()
-                }
+                if (e.repeat) return
                 setPulse((p) => p + 1)
+                game.setMineHold(true)
+              }}
+              onKeyUp={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                game.setMineHold(false)
               }}
             >
               <div className="viewport-frame" aria-hidden>

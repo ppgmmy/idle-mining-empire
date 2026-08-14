@@ -16,7 +16,6 @@ import {
   canEvolve,
   canRebirth,
   createInitialState,
-  EVOLUTION_UNLOCK_REBIRTH,
   evolutionMult,
   facilityLevel,
   getClickGain,

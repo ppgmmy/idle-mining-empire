@@ -28,6 +28,8 @@ import {
   abandonChallenge,
   tick,
   toggleAutomation,
+  UPGRADE_CHUNK,
+  UPGRADE_MAX_BATCH,
 } from './actions'
 import { canAccessTab, isAdmin } from './admin'
 import { bn, formatBN } from './bigNumber'
@@ -38,6 +40,8 @@ import type { FacilityId, GameState, GearSlot, TabId } from './types'
 import { TICK_MS } from './types'
 
 const LEADERBOARD_SYNC_MS = 60_000
+/** 按住掘礦／打 Boss 節奏 */
+const MINE_HOLD_MS = 50
 
 export function useGame() {
   const [state, setState] = useState<GameState>(() => createInitialState())
@@ -47,6 +51,21 @@ export function useGame() {
   const [bannerLeaving, setBannerLeaving] = useState(false)
   const stateRef = useRef(state)
   stateRef.current = state
+  const flushScheduled = useRef(false)
+  const mineHoldRef = useRef(false)
+  const lastMineHoldAt = useRef(0)
+
+  /** 寫入 stateRef，同幀合併 flush 到 React，避免狂撳掣卡住 tick */
+  const commit = useEffectEvent((updater: (s: GameState) => GameState) => {
+    stateRef.current = updater(stateRef.current)
+    if (!flushScheduled.current) {
+      flushScheduled.current = true
+      requestAnimationFrame(() => {
+        flushScheduled.current = false
+        setState(stateRef.current)
+      })
+    }
+  })
 
   const syncLeaderboard = useEffectEvent(() => {
     const s = stateRef.current
@@ -63,6 +82,7 @@ export function useGame() {
     if (loaded) {
       const { state: withOffline, gainedSeconds, gainedOre } =
         applyOfflineGains(loaded)
+      stateRef.current = withOffline
       setState(withOffline)
       if (gainedSeconds > 5) {
         const mins = Math.floor(gainedSeconds / 60)
@@ -104,25 +124,39 @@ export function useGame() {
     }
   }, [tab, state.rebirthCount])
 
-  const onTick = useEffectEvent(() => {
-    setState((s) => {
-      const before = s.rebirthCount
-      const payout = calcRebirthPayout(s)
-      const next = tick(s, TICK_MS / 1000)
-      if (next.rebirthCount > before) {
-        setBannerLeaving(false)
-        setBanner(`自動${describeRebirthNotice(next, payout)}`)
-        queueMicrotask(() => syncLeaderboard())
-      }
-      return next
-    })
-  })
-
+  // 遊戲心跳：即使用家狂撳／按住，都會用真實時間推進 tick（自動化、閒置）
   useEffect(() => {
     if (!ready) return
-    const id = window.setInterval(() => onTick(), TICK_MS)
+    let last = performance.now()
+    const id = window.setInterval(() => {
+      const now = performance.now()
+      const dtSec = Math.min(0.5, Math.max(0, (now - last) / 1000))
+      last = now
+      if (dtSec <= 0) return
+      const before = stateRef.current.rebirthCount
+      const payout = calcRebirthPayout(stateRef.current)
+      commit((s) => tick(s, dtSec))
+      if (stateRef.current.rebirthCount > before) {
+        setBannerLeaving(false)
+        setBanner(`自動${describeRebirthNotice(stateRef.current, payout)}`)
+        queueMicrotask(() => syncLeaderboard())
+      }
+    }, TICK_MS)
     return () => window.clearInterval(id)
-  }, [ready, onTick])
+  }, [ready, commit, syncLeaderboard])
+
+  // 按住掘礦：同 tick 分開節奏，唔靠 key.repeat 塞爆主線程
+  useEffect(() => {
+    if (!ready) return
+    const id = window.setInterval(() => {
+      if (!mineHoldRef.current) return
+      const now = performance.now()
+      if (now - lastMineHoldAt.current < MINE_HOLD_MS) return
+      lastMineHoldAt.current = now
+      commit((s) => (s.activeBoss ? attackBoss(s) : strikeStage(s)))
+    }, MINE_HOLD_MS)
+    return () => window.clearInterval(id)
+  }, [ready, commit])
 
   useEffect(() => {
     if (!ready) return
@@ -141,6 +175,23 @@ export function useGame() {
     }
   }, [ready])
 
+  const runBuyChunks = useEffectEvent(
+    (applyBatch: (s: GameState, n: number) => GameState, times: number) => {
+      const total = Number.isFinite(times)
+        ? Math.max(0, Math.floor(times))
+        : UPGRADE_MAX_BATCH
+      let left = total
+      const step = () => {
+        if (left <= 0) return
+        const n = Math.min(UPGRADE_CHUNK, left)
+        left -= n
+        commit((s) => applyBatch(s, n))
+        if (left > 0) requestAnimationFrame(step)
+      }
+      step()
+    },
+  )
+
   return {
     state,
     tab,
@@ -157,26 +208,32 @@ export function useGame() {
     },
     adminUnlock: () => {
       if (!isAdmin()) return
-      setState((s) => adminUnlockResearchAndGear(s))
+      commit((s) => adminUnlockResearchAndGear(s))
       setBannerLeaving(false)
       setBanner('管理員：已開通研究與裝備')
     },
-    mine: () => setState((s) => mineClick(s)),
-    strikeStage: () => setState((s) => strikeStage(s)),
-    spawnBoss: () => setState((s) => spawnBoss(s)),
-    attackBoss: () => setState((s) => attackBoss(s)),
-    fleeBoss: () => setState((s) => fleeBoss(s)),
-    buyMiner: () => setState((s) => buyMiner(s)),
-    buyDrill: () => setState((s) => buyDrill(s)),
-    buyMinerTimes: (times: number) => setState((s) => buyMinerTimes(s, times)),
-    buyDrillTimes: (times: number) => setState((s) => buyDrillTimes(s, times)),
-    buyFacility: (id: FacilityId) => setState((s) => buyFacility(s, id)),
+    setMineHold: (holding: boolean) => {
+      mineHoldRef.current = holding
+      if (holding) {
+        lastMineHoldAt.current = 0
+      }
+    },
+    mine: () => commit((s) => mineClick(s)),
+    strikeStage: () => commit((s) => strikeStage(s)),
+    spawnBoss: () => commit((s) => spawnBoss(s)),
+    attackBoss: () => commit((s) => attackBoss(s)),
+    fleeBoss: () => commit((s) => fleeBoss(s)),
+    buyMiner: () => commit((s) => buyMiner(s)),
+    buyDrill: () => commit((s) => buyDrill(s)),
+    buyMinerTimes: (times: number) => runBuyChunks(buyMinerTimes, times),
+    buyDrillTimes: (times: number) => runBuyChunks(buyDrillTimes, times),
+    buyFacility: (id: FacilityId) => commit((s) => buyFacility(s, id)),
     buyFacilityTimes: (id: FacilityId, times: number) =>
-      setState((s) => buyFacilityTimes(s, id, times)),
-    buyResearch: (id: string) => setState((s) => buyResearch(s, id)),
+      runBuyChunks((s, n) => buyFacilityTimes(s, id, n), times),
+    buyResearch: (id: string) => commit((s) => buyResearch(s, id)),
     craftGear: (slot: GearSlot) => {
       let craftedId: string | null = null
-      setState((s) => {
+      commit((s) => {
         const next = craftGear(s, slot)
         if (next.gear.length > s.gear.length) {
           craftedId = next.gear[next.gear.length - 1]?.id ?? null
@@ -185,13 +242,13 @@ export function useGame() {
       })
       return craftedId
     },
-    equipGear: (gearId: string) => setState((s) => equipGear(s, gearId)),
-    unequipGear: (gearId: string) => setState((s) => unequipGear(s, gearId)),
-    sellUnequippedGear: () => setState((s) => sellUnequippedGear(s)),
-    dropGear: (gearId: string) => setState((s) => dropGear(s, gearId)),
-    rerollGear: (gearId: string) => setState((s) => rerollGear(s, gearId)),
+    equipGear: (gearId: string) => commit((s) => equipGear(s, gearId)),
+    unequipGear: (gearId: string) => commit((s) => unequipGear(s, gearId)),
+    sellUnequippedGear: () => commit((s) => sellUnequippedGear(s)),
+    dropGear: (gearId: string) => commit((s) => dropGear(s, gearId)),
+    rerollGear: (gearId: string) => commit((s) => rerollGear(s, gearId)),
     rebirth: () => {
-      setState((s) => {
+      commit((s) => {
         const before = s.rebirthCount
         const payout = calcRebirthPayout(s)
         const next = doRebirth(s)
@@ -204,7 +261,7 @@ export function useGame() {
       })
     },
     evolve: () => {
-      setState((s) => {
+      commit((s) => {
         const before = s.evolutionCount ?? 0
         const next = doEvolve(s)
         if ((next.evolutionCount ?? 0) > before) {
@@ -215,8 +272,8 @@ export function useGame() {
         return next
       })
     },
-    toggleAutomation: (id: string) => setState((s) => toggleAutomation(s, id)),
-    startChallenge: (id: string) => setState((s) => startChallenge(s, id)),
-    abandonChallenge: () => setState((s) => abandonChallenge(s)),
+    toggleAutomation: (id: string) => commit((s) => toggleAutomation(s, id)),
+    startChallenge: (id: string) => commit((s) => startChallenge(s, id)),
+    abandonChallenge: () => commit((s) => abandonChallenge(s)),
   }
 }

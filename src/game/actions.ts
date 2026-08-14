@@ -185,8 +185,12 @@ export function buyDrill(state: GameState): GameState {
   }
 }
 
-/** Max 一次最多升幾級（避免單次點擊卡死 UI） */
+/** Max 一次最多升幾級（分批執行，唔一次卡死） */
 export const UPGRADE_MAX_BATCH = 5000
+/** 每次 tick 自動購買上限，避免 while 迴圈卡住主線程 */
+export const AUTO_BUY_PER_TICK = 40
+/** Max／連買每幀處理量 */
+export const UPGRADE_CHUNK = 80
 
 /** times＝購買次數；傳 Infinity 或很大數字＝買到買唔起（上限 UPGRADE_MAX_BATCH） */
 export function buyMinerTimes(state: GameState, times: number): GameState {
@@ -618,19 +622,29 @@ function runAutomations(state: GameState): GameState {
 
     if (rule.kind === 'autoMiner') {
       if (!isAutomationUnlocked(next, 'autoMiner')) continue
-      while (next.ore.gte(next.minerCost.mul(rule.threshold))) {
+      let buys = 0
+      while (
+        buys < AUTO_BUY_PER_TICK &&
+        next.ore.gte(next.minerCost.mul(rule.threshold))
+      ) {
         const bought = buyMiner(next)
         if (bought === next) break
         next = bought
+        buys += 1
       }
     }
 
     if (rule.kind === 'autoDrill') {
       if (!isAutomationUnlocked(next, 'autoDrill')) continue
-      while (next.ore.gte(next.drillCost.mul(rule.threshold))) {
+      let buys = 0
+      while (
+        buys < AUTO_BUY_PER_TICK &&
+        next.ore.gte(next.drillCost.mul(rule.threshold))
+      ) {
         const bought = buyDrill(next)
         if (bought === next) break
         next = bought
+        buys += 1
       }
     }
 
