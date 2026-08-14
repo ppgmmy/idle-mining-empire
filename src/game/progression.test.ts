@@ -154,13 +154,35 @@ describe('progression', () => {
     expect(state.researchLevels['auto-buy-drill']).toBe(1)
     expect(state.ore.eq(bn(167_000))).toBe(true)
 
+    state = buyResearch(state, 'auto-facility')
+    expect(state.researchLevels['auto-facility']).toBe(1)
+    expect(state.ore.eq(bn(117_000))).toBe(true)
+    expect(
+      state.automations.find((a) => a.kind === 'autoFacility')?.enabled,
+    ).toBe(true)
+
     state = buyResearch(state, 'auto-rebirth')
     expect(state.researchLevels['auto-rebirth']).toBe(1)
-    expect(state.ore.eq(bn(87_000))).toBe(true)
+    expect(state.ore.eq(bn(37_000))).toBe(true)
     // maxLevel 1：再買無效
     const oreBefore = state.ore
     state = buyResearch(state, 'auto-rebirth')
     expect(state.ore.eq(oreBefore)).toBe(true)
+  })
+
+  it('auto-facility upgrades unlocked facilities on tick', () => {
+    let state = createInitialState()
+    state = {
+      ...state,
+      ore: bn(50_000),
+      researchLevels: { 'auto-facility': 1 },
+      automations: state.automations.map((a) =>
+        a.kind === 'autoFacility' ? { ...a, enabled: true } : a,
+      ),
+    }
+    const before = facilityLevel(state, 'pulse')
+    state = tick(state, 0.2)
+    expect(facilityLevel(state, 'pulse')).toBeGreaterThan(before)
   })
 
   it('offline gains respect time and stay finite', () => {

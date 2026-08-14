@@ -60,6 +60,7 @@ function migrateAutomations(
     else if (
       existing.kind === 'autoMiner' ||
       existing.kind === 'autoDrill' ||
+      existing.kind === 'autoFacility' ||
       existing.kind === 'autoRebirth'
     ) {
       kind = existing.kind
@@ -172,9 +173,14 @@ function deserialize(raw: SerializedGameState): GameState {
     raw.macrosUnlocked ||
     Object.entries(researchLevels).some(([id, lv]) => id === 'macro-kernel' && lv >= 1)
 
-  // 舊「巨集核心」／macrosUnlocked → 三個自動化研究各 Lv1（顯示已解鎖，唔使再用礦石重買）
+  // 舊「巨集核心」／macrosUnlocked → 自動化研究各 Lv1（顯示已解鎖，唔使再用礦石重買）
   if (macrosUnlocked || (researchLevels['macro-kernel'] ?? 0) >= 1) {
-    for (const id of ['auto-miner', 'auto-buy-drill', 'auto-rebirth'] as const) {
+    for (const id of [
+      'auto-miner',
+      'auto-buy-drill',
+      'auto-facility',
+      'auto-rebirth',
+    ] as const) {
       researchLevels[id] = Math.max(researchLevels[id] ?? 0, 1)
     }
   }

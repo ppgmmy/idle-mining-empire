@@ -62,6 +62,18 @@ export const RESEARCH_TREE: ResearchNode[] = [
     maxLevel: 1,
   },
   {
+    id: 'auto-facility',
+    name: '自動設施強化',
+    desc: '解鎖自動化開關：礦石夠就自動強化設施',
+    branch: 'automation',
+    baseCost: 50_000,
+    costGrowth: 1,
+    costCurrency: 'ore',
+    effectPerLevel: {},
+    unlocksAutomation: 'autoFacility',
+    maxLevel: 1,
+  },
+  {
     id: 'auto-rebirth',
     name: '達標即重生',
     desc: '解鎖自動化開關：轉生條件達成就自動轉生',
@@ -834,6 +846,13 @@ export function createInitialState(now = Date.now()): GameState {
         threshold: 1,
       },
       {
+        id: 'auto-facility',
+        label: '自動設施強化',
+        enabled: false,
+        kind: 'autoFacility',
+        threshold: 1,
+      },
+      {
         id: 'auto-rebirth',
         label: '達標即重生',
         enabled: false,
@@ -947,18 +966,19 @@ export function researchStardustUpgradeCost(
 }
 
 const AUTOMATION_RESEARCH_ID: Record<
-  'autoMiner' | 'autoDrill' | 'autoRebirth',
+  'autoMiner' | 'autoDrill' | 'autoFacility' | 'autoRebirth',
   string
 > = {
   autoMiner: 'auto-miner',
   autoDrill: 'auto-buy-drill',
+  autoFacility: 'auto-facility',
   autoRebirth: 'auto-rebirth',
 }
 
 /** 舊存檔 macrosUnlocked／巨集核心仍視為全解鎖 */
 export function isAutomationUnlocked(
   state: GameState,
-  kind: 'autoMiner' | 'autoDrill' | 'autoRebirth',
+  kind: 'autoMiner' | 'autoDrill' | 'autoFacility' | 'autoRebirth',
 ): boolean {
   if (state.macrosUnlocked) return true
   if ((state.researchLevels['macro-kernel'] ?? 0) >= 1) return true

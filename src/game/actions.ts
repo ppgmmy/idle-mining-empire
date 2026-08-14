@@ -663,6 +663,27 @@ function runAutomations(state: GameState): GameState {
       }
     }
 
+    if (rule.kind === 'autoFacility') {
+      if (!isAutomationUnlocked(next, 'autoFacility')) continue
+      let buys = 0
+      let progressed = true
+      while (buys < AUTO_BUY_PER_TICK && progressed) {
+        progressed = false
+        for (const def of FACILITIES) {
+          if (buys >= AUTO_BUY_PER_TICK) break
+          if (!def.unlocked(next)) continue
+          const level = facilityLevel(next, def.id)
+          const cost = facilityCost(def, level)
+          if (next.ore.lt(cost.mul(rule.threshold))) continue
+          const bought = buyFacility(next, def.id)
+          if (bought === next) continue
+          next = bought
+          buys += 1
+          progressed = true
+        }
+      }
+    }
+
     // 達標重生：同手動轉生同一個 canRebirth 條件
     if (rule.kind === 'autoRebirth' && canRebirth(next)) {
       if (!isAutomationUnlocked(next, 'autoRebirth')) continue

@@ -246,7 +246,7 @@ export type ResearchNode = {
   effectPerLevel: Partial<Record<AffixId, number>>
   unlocksMacros?: boolean
   /** 解鎖對應自動化開關（通常 maxLevel=1） */
-  unlocksAutomation?: 'autoMiner' | 'autoDrill' | 'autoRebirth'
+  unlocksAutomation?: 'autoMiner' | 'autoDrill' | 'autoFacility' | 'autoRebirth'
   /** 最高等級；缺省無限 */
   maxLevel?: number
 }
@@ -308,7 +308,7 @@ export type AutomationRule = {
   id: string
   label: string
   enabled: boolean
-  kind: 'autoMiner' | 'autoDrill' | 'autoRebirth'
+  kind: 'autoMiner' | 'autoDrill' | 'autoFacility' | 'autoRebirth'
   threshold: number
 }
 
