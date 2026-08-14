@@ -671,7 +671,8 @@ export default function App() {
             </div>
             <p className="craft-level-line">
               打造 Lv{state.craftLevel} · {state.craftXp}/
-              {craftsNeededForNextLevel(state.craftLevel)} · 最高可出{' '}
+              {craftsNeededForNextLevel(state.craftLevel)} · 最高可出 No.
+              {maxCraftRarityIndex(state.craftLevel) + 1}{' '}
               {RARITY_LABEL[RARITY_ORDER[maxCraftRarityIndex(state.craftLevel)]!]}
             </p>
             {(() => {
@@ -724,6 +725,7 @@ export default function App() {
                         className="rarity-dot"
                         style={{ background: gearAccent(craftReveal) }}
                       />
+                      No.{rarityTierNumber(craftReveal.rarity)}{' '}
                       {RARITY_LABEL[craftReveal.rarity]}
                     </span>
                     <span className="gear-quality">
@@ -881,6 +883,7 @@ export default function App() {
                                   className="rarity-dot"
                                   style={{ background: accent }}
                                 />
+                                No.{rarityTierNumber(item.rarity)}{' '}
                                 {RARITY_LABEL[item.rarity]}
                               </span>
                             </span>
