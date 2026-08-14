@@ -405,7 +405,8 @@ export function doRebirth(state: GameState): GameState {
       nextCount >= 2 ? Math.max(state.automationLines, 1) : state.automationLines,
     macrosUnlocked: nextCount >= 3 || state.macrosUnlocked,
     totalOreEarned: bn(0),
-    // 已接嘅限制挑戰轉生後繼續，唔取消
+    /** 轉生保留已接限制挑戰（唔清 activeChallengeId） */
+    activeChallengeId: state.activeChallengeId,
     activeBoss: null,
     bossSpawnLockUntil: 0,
     stage: 1,

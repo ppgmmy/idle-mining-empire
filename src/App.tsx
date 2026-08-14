@@ -63,7 +63,9 @@ import {
 import { useGame } from './game/useGame'
 import './App.css'
 
-const RESEARCH_BRANCHES: ResearchBranch[] = ['active', 'idle', 'automation', 'economy']
+const RESEARCH_BRANCHES: ResearchBranch[] = (
+  ['active', 'idle', 'automation', 'economy'] as const
+).filter((branch) => RESEARCH_TREE.some((n) => n.branch === branch))
 
 export default function App() {
   const game = useGame()
@@ -463,7 +465,8 @@ export default function App() {
           <section className="panel research-panel">
             <h2>研究流派</h2>
             <p className="lede">
-              耗晶體升級 · 每級代價再乘成長 · 每級加幅×1.05 · 與升級／裝備互乘
+              耗晶體升級 · 點擊／每秒自動／離線各淨一個位 · 每級代價再乘成長 · 每級加幅×1.05 ·
+              與升級／裝備互乘
             </p>
 
             <div className="branch-tabs" role="tablist" aria-label="研究流派">
@@ -535,7 +538,7 @@ export default function App() {
           <section className="panel">
             <h2>裝備詞條</h2>
             <p className="lede">
-              打造耗星塵 · 晉升／重鑄耗晶體 · 晉升互乘本階升幅（起 1.05% · 每階×120%）· 全庫互乘 · 與升級／研究互乘 ·{' '}
+              打造耗星塵 · 晉升／重鑄耗晶體（階位×1.7 · 次數×1.85，大幅加價）· 晉升互乘本階升幅（起 1.05% · 每階×120%）· 全庫互乘 · 與升級／研究互乘 ·{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
             <p className="craft-level-line">
@@ -817,7 +820,7 @@ export default function App() {
             <div className="stack muted-block">
               <h3>限制挑戰</h3>
               <p className="hint">
-                三線無限級 · 目標每級×4 · 通關永久獎勵入帳 · 紀錄撳入先睇
+                三線無限級 · 目標每級×4 · 通關永久獎勵入帳 · 轉生唔取消已接挑戰 · 紀錄撳入先睇
               </p>
               {challengeOffers.map((c) => {
                 const unlocked = state.rebirthCount >= c.unlockRebirth

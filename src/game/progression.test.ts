@@ -8,6 +8,7 @@ import {
   mineClick,
   applyOfflineGains,
   buyResearch,
+  startChallenge,
   tick,
 } from './actions'
 import { bn } from './bigNumber'
@@ -106,6 +107,21 @@ describe('progression', () => {
     expect(state.rebirthCount).toBe(1)
     expect(state.rebirthMult.gt(1)).toBe(true)
     expect(state.crystals.gt(0)).toBe(true)
+  })
+
+  it('rebirth keeps an already-started challenge', () => {
+    let state = createInitialState()
+    state = {
+      ...state,
+      rebirthCount: 1,
+      totalOreEarned: bn(2000),
+      ore: bn(500),
+    }
+    state = startChallenge(state, 'clickOnly-1')
+    expect(state.activeChallengeId).toBe('clickOnly-1')
+    state = doRebirth(state)
+    expect(state.activeChallengeId).toBe('clickOnly-1')
+    expect(state.rebirthCount).toBe(2)
   })
 
   it('research spends crystals with geometric cost growth', () => {

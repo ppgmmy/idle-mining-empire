@@ -174,27 +174,24 @@ describe('side systems', () => {
     expect(sumAffix(state, 'clickMult')).toBeCloseTo(0.875)
   })
 
-  it('research nodes avoid minePower and duplicate types within a branch', () => {
+  it('research has exactly one upgrade slot per combat affix type', () => {
     const affixIds = [
       'clickMult',
       'idleRate',
       'minePower',
       'offlineBonus',
     ] as const
+    const seen: string[] = []
     for (const node of RESEARCH_TREE) {
       const keys = affixIds.filter((id) => (node.effectPerLevel[id] ?? 0) > 0)
       expect(keys).not.toContain('minePower')
       expect(keys.length).toBeLessThanOrEqual(1)
+      seen.push(...keys)
     }
-    for (const branch of ['active', 'idle', 'automation', 'economy'] as const) {
-      const types: string[] = []
-      for (const node of RESEARCH_TREE.filter((n) => n.branch === branch)) {
-        for (const id of affixIds) {
-          if ((node.effectPerLevel[id] ?? 0) > 0) types.push(id)
-        }
-      }
-      expect(new Set(types).size).toBe(types.length)
-    }
+    expect(seen.filter((id) => id === 'clickMult')).toHaveLength(1)
+    expect(seen.filter((id) => id === 'idleRate')).toHaveLength(1)
+    expect(seen.filter((id) => id === 'offlineBonus')).toHaveLength(1)
+    expect(new Set(seen).size).toBe(seen.length)
   })
 
   it('research levels, challenge and gear all multiply together', () => {

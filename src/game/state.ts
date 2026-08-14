@@ -15,63 +15,27 @@ import type {
 import { AFFIX_META, RARITY_ORDER, SLOT_META } from './types'
 
 /**
- * 每個流派：點擊／閒置／離線各最多一項（唔重複）。
+ * 全研究樹：每種產量加成只有一個升級位（點擊／閒置／離線各一）。
  * 開採力同時乘點擊+閒置，研究唔再用。
  */
 export const RESEARCH_TREE: ResearchNode[] = [
   {
     id: 'pulse-click',
     name: '脈衝點擊',
-    desc: '主動流派：點擊倍率',
+    desc: '唯一點擊倍率升級',
     branch: 'active',
     baseCost: 3,
-    costGrowth: 1.65,
-    effectPerLevel: { clickMult: 0.05 },
-  },
-  {
-    id: 'impact-burst',
-    name: '衝擊爆發',
-    desc: '主動流派：閒置產量',
-    branch: 'active',
-    baseCost: 5,
-    costGrowth: 1.68,
-    effectPerLevel: { idleRate: 0.03 },
-  },
-  {
-    id: 'frenzy-tap',
-    name: '狂熱連點',
-    desc: '主動流派：離線收益',
-    branch: 'active',
-    baseCost: 8,
-    costGrowth: 1.72,
-    effectPerLevel: { offlineBonus: 0.028 },
-  },
-  {
-    id: 'deep-veins',
-    name: '深層礦脈',
-    desc: '閒置流派：離線收益',
-    branch: 'idle',
-    baseCost: 4,
-    costGrowth: 1.65,
-    effectPerLevel: { offlineBonus: 0.035 },
+    costGrowth: 1.7,
+    effectPerLevel: { clickMult: 0.06 },
   },
   {
     id: 'auto-drill',
     name: '自動鑽頭',
-    desc: '閒置流派：閒置產量',
+    desc: '唯一閒置產量升級（每秒自動）',
     branch: 'idle',
-    baseCost: 6,
-    costGrowth: 1.7,
-    effectPerLevel: { idleRate: 0.04 },
-  },
-  {
-    id: 'drone-swarm',
-    name: '無人機群',
-    desc: '閒置流派：點擊倍率',
-    branch: 'idle',
-    baseCost: 10,
-    costGrowth: 1.74,
-    effectPerLevel: { clickMult: 0.03 },
+    baseCost: 5,
+    costGrowth: 1.72,
+    effectPerLevel: { idleRate: 0.05 },
   },
   {
     id: 'macro-kernel',
@@ -84,58 +48,13 @@ export const RESEARCH_TREE: ResearchNode[] = [
     unlocksMacros: true,
   },
   {
-    id: 'logic-bus',
-    name: '邏輯匯流排',
-    desc: '自動化流派：閒置產量',
-    branch: 'automation',
-    baseCost: 12,
-    costGrowth: 1.72,
-    effectPerLevel: { idleRate: 0.032 },
-  },
-  {
-    id: 'relay-net',
-    name: '中繼網絡',
-    desc: '自動化流派：離線收益',
-    branch: 'automation',
-    baseCost: 18,
-    costGrowth: 1.76,
-    effectPerLevel: { offlineBonus: 0.03 },
-  },
-  {
-    id: 'script-forge',
-    name: '腳本鍛造',
-    desc: '自動化流派：點擊倍率',
-    branch: 'automation',
-    baseCost: 25,
-    costGrowth: 1.8,
-    effectPerLevel: { clickMult: 0.045 },
-  },
-  {
-    id: 'ore-assay',
-    name: '礦石化驗',
-    desc: '經濟流派：點擊倍率',
-    branch: 'economy',
-    baseCost: 5,
-    costGrowth: 1.68,
-    effectPerLevel: { clickMult: 0.035 },
-  },
-  {
-    id: 'market-pulse',
-    name: '市場脈動',
-    desc: '經濟流派：閒置產量',
-    branch: 'economy',
-    baseCost: 15,
-    costGrowth: 1.75,
-    effectPerLevel: { idleRate: 0.028 },
-  },
-  {
     id: 'singularity-ledger',
     name: '奇點帳本',
-    desc: '經濟流派：離線收益；另加裝備庫容',
+    desc: '唯一離線收益升級；另加裝備庫容',
     branch: 'economy',
-    baseCost: 40,
-    costGrowth: 1.85,
-    effectPerLevel: { offlineBonus: 0.032 },
+    baseCost: 12,
+    costGrowth: 1.78,
+    effectPerLevel: { offlineBonus: 0.045 },
   },
 ]
 
@@ -473,13 +392,14 @@ export function rarityAccent(rarity: Rarity): string {
 }
 
 /**
- * 晉升／重鑄用晶體：階位愈高愈貴，再 × 1.25^已重鑄次數
+ * 晉升／重鑄用晶體：隨稀有階指數上升，再 × 成長^已重鑄次數（大幅加價）
+ * 例：普通起 18；每高 1 階 ×1.7；每多 1 次重鑄／晉升 ×1.85
  */
 export function rerollGearCost(item: GearItem): BN {
-  const i = rarityIndex(item.rarity)
-  const base = 1 + Math.floor(i / 3)
+  const i = Math.max(0, rarityIndex(item.rarity))
   const rerolls = item.rerolls ?? 0
-  return bn(base).mul(bn(1.25).pow(rerolls))
+  const base = bn(18).mul(bn(1.7).pow(i))
+  return base.mul(bn(1.85).pow(rerolls))
 }
 
 /** 升到下一打造等級所需打造次數（愈高愈難） */
