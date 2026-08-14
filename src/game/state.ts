@@ -78,9 +78,9 @@ export const RESEARCH_TREE: ResearchNode[] = [
     baseStardustCost: 25,
     stardustCostGrowth: 2.65,
     effectPerLevel: {
-      clickMult: 0.05,
-      idleRate: 0.05,
-      offlineBonus: 0.05,
+      clickMult: 0.1,
+      idleRate: 0.1,
+      offlineBonus: 0.1,
     },
   },
 ]

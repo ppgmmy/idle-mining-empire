@@ -304,9 +304,9 @@ describe('side systems', () => {
 
   it('singularity ledger buffs click, idle and offline', () => {
     const ledger = RESEARCH_TREE.find((n) => n.id === 'singularity-ledger')!
-    expect(ledger.effectPerLevel.clickMult).toBeGreaterThan(0)
-    expect(ledger.effectPerLevel.idleRate).toBeGreaterThan(0)
-    expect(ledger.effectPerLevel.offlineBonus).toBeGreaterThan(0)
+    expect(ledger.effectPerLevel.clickMult).toBe(0.1)
+    expect(ledger.effectPerLevel.idleRate).toBe(0.1)
+    expect(ledger.effectPerLevel.offlineBonus).toBe(0.1)
     expect(RESEARCH_TREE.some((n) => n.id === 'pulse-click')).toBe(false)
     expect(RESEARCH_TREE.some((n) => n.id === 'auto-drill')).toBe(false)
     for (const node of RESEARCH_TREE) {
