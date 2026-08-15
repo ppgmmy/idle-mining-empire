@@ -20,8 +20,8 @@ export function softWallRemaining(state: GameState): number {
   return Math.max(0, POST_EVO_SOFT_WALL_REBIRTHS - state.rebirthCount)
 }
 
-/** 創世後詞條突破：每階詞條效力 ×1.05 */
-export const BREAKTHROUGH_AFFIX_GROWTH = 1.05
+/** 創世後詞條突破：每階詞條效力 ×1.015（刻意慢） */
+export const BREAKTHROUGH_AFFIX_GROWTH = 1.015
 
 export function canBreakthrough(item: GearItem): boolean {
   return item.rarity === 'genesis'
@@ -31,12 +31,13 @@ export function breakthroughLevel(item: GearItem): number {
   return Math.max(0, Math.floor(item.breakthrough ?? 0))
 }
 
+/** 星塵成本：高底價 × 每階陡升，創世首破已極貴 */
 export function breakthroughCost(item: GearItem): BN {
   const b = breakthroughLevel(item)
   const rarityI = Math.max(0, RARITY_ORDER.indexOf(item.rarity as Rarity))
-  return bn(800)
-    .mul(bn(2.35).pow(b))
-    .mul(bn(1.15).pow(rarityI))
+  return bn(100_000)
+    .mul(bn(4.2).pow(b))
+    .mul(bn(1.22).pow(rarityI))
     .floor()
 }
 
