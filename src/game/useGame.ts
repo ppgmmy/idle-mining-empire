@@ -229,6 +229,10 @@ export function useGame() {
       setBannerLeaving(false)
       setBanner(null)
     },
+    notify: (text: string) => {
+      setBannerLeaving(false)
+      setBanner(text)
+    },
     adminUnlock: () => {
       if (!isAdmin()) return
       commit((s) => adminUnlockResearchAndGear(s))

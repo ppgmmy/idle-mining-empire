@@ -73,8 +73,9 @@ textarea {
 .daily-opt-banner {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 10px;
-  align-items: baseline;
+  gap: 8px 10px;
+  align-items: center;
+  justify-content: space-between;
   padding: 8px 10px;
   border-radius: 12px;
   border: 1px solid rgba(154, 215, 255, 0.35);
@@ -84,9 +85,35 @@ textarea {
   color: var(--muted);
 }
 
+.daily-opt-banner-copy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .daily-opt-banner strong {
   color: #9ad7ff;
   font-size: 0.72rem;
+}
+
+.daily-opt-try-btn {
+  flex-shrink: 0;
+  border: 1px solid rgba(240, 180, 41, 0.5);
+  background: rgba(240, 180, 41, 0.16);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.daily-opt-try-btn:hover {
+  border-color: rgba(240, 180, 41, 0.75);
+  background: rgba(240, 180, 41, 0.28);
 }
 
 .set-bonus-panel,

@@ -29,7 +29,7 @@ export const DAILY_FEATURE_BACKLOG: DailyFeatureDef[] = [
   {
     id: 'daily-opt-banner',
     title: '每日優化公告',
-    description: '頁首顯示最近自動啟用的優化，方便追蹤遊戲成長。',
+    description: '頁首常駐最新優化說明，並可一鍵跳去相關分頁試玩。',
     pillar: 'playability_new',
   },
   {

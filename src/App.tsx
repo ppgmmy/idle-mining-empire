@@ -35,8 +35,11 @@ import {
 } from './game/gearLoop'
 import {
   getFeatureMeta,
+  getFeatureTryTab,
   getLastEnabledFeature,
   isFeatureEnabled,
+  markDailyOptSeen,
+  peekUnseenDailyOptNotice,
 } from './data/featureFlags'
 import {
   calcRebirthPayout,
@@ -133,10 +136,19 @@ export default function App() {
     }
   }, [buyMult])
 
-  const lastOpt = isFeatureEnabled('daily-opt-banner')
-    ? getLastEnabledFeature()
-    : null
-  const lastOptMeta = lastOpt?.id ? getFeatureMeta(lastOpt.id) : null
+  useEffect(() => {
+    if (!game.ready) return
+    const unseen = peekUnseenDailyOptNotice()
+    if (!unseen) return
+    markDailyOptSeen(unseen.id)
+    const tip = unseen.description ? ` · ${unseen.description}` : ''
+    game.notify(`新優化已上線：${unseen.title}${tip} · 可撳上方「去試下」`)
+  }, [game.ready])
+
+  // 玩家通知永遠顯示最新優化（唔再掛喺 daily-opt-banner flag）
+  const lastOpt = getLastEnabledFeature()
+  const lastOptMeta = lastOpt.id ? getFeatureMeta(lastOpt.id) : null
+  const tryTab = lastOpt.id ? getFeatureTryTab(lastOpt.id) : null
   const setCounts = isFeatureEnabled('set-bonus-panel')
     ? equippedSetCounts(state)
     : null
@@ -176,13 +188,24 @@ export default function App() {
     <div className="app-shell">
       <div className="top-zone">
         <ResourceBar state={state} />
-        {lastOpt?.id && lastOpt.title ? (
+        {lastOpt.id && lastOpt.title ? (
           <div className="daily-opt-banner" role="status">
-            <strong>今日優化</strong>
-            <span>
-              {lastOpt.title}
-              {lastOptMeta?.description ? ` · ${lastOptMeta.description}` : ''}
-            </span>
+            <div className="daily-opt-banner-copy">
+              <strong>最新優化</strong>
+              <span>
+                {lastOpt.title}
+                {lastOptMeta?.description ? ` · ${lastOptMeta.description}` : ''}
+              </span>
+            </div>
+            {tryTab ? (
+              <button
+                type="button"
+                className="daily-opt-try-btn"
+                onClick={() => game.setTab(tryTab)}
+              >
+                去試下
+              </button>
+            ) : null}
           </div>
         ) : null}
         {activeChallenge ? (
