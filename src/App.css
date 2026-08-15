@@ -159,6 +159,16 @@ textarea {
   gap: 8px;
 }
 
+.resource-grid--with-echo {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 640px) {
+  .resource-grid--with-echo {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .resource-chip {
   --res-glow: rgba(214, 186, 120, 0.18);
   background:
@@ -182,6 +192,10 @@ textarea {
 
 .resource-chip--stardust {
   --res-glow: rgba(255, 228, 140, 0.26);
+}
+
+.resource-chip--echo {
+  --res-glow: rgba(154, 215, 255, 0.28);
 }
 
 .resource-chip--rebirth {
@@ -264,6 +278,11 @@ textarea {
 .res-svg--crystal {
   animation: res-bob 2.6s ease-in-out infinite;
   animation-delay: 0.4s;
+}
+
+.res-svg--echo {
+  animation: res-bob 2.9s ease-in-out infinite;
+  animation-delay: 0.2s;
 }
 
 @keyframes res-twinkle {
@@ -1661,6 +1680,27 @@ textarea {
   font-size: 0.78rem;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
+}
+
+.soft-wall-hint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #f0b429;
+  line-height: 1.35;
+}
+
+.expedition-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(154, 215, 255, 0.35);
+  border-radius: 14px;
+  background: rgba(154, 215, 255, 0.06);
+}
+
+.gear-breakthrough {
+  color: #9ad7ff;
+  font-weight: 700;
 }
 
 .evolve-card {

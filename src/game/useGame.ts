@@ -23,6 +23,8 @@ import {
   mineClick,
   strikeStage,
   rerollGear,
+  breakthroughGear,
+  runExpedition,
   spawnBoss,
   startChallenge,
   abandonChallenge,
@@ -262,6 +264,9 @@ export function useGame() {
       commit((s) => sellUnequippedGear(s, slot)),
     dropGear: (gearId: string) => commit((s) => dropGear(s, gearId)),
     rerollGear: (gearId: string) => commit((s) => rerollGear(s, gearId)),
+    breakthroughGear: (gearId: string) =>
+      commit((s) => breakthroughGear(s, gearId)),
+    runExpedition: () => commit((s) => runExpedition(s)),
     rebirth: () => {
       const before = stateRef.current.rebirthCount
       const payout = calcRebirthPayout(stateRef.current)

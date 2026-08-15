@@ -20,7 +20,7 @@ import type {
 } from './types'
 import { GEAR_SLOTS, LEGACY_SLOT_MAP, SAVE_KEY } from './types'
 
-function serialize(state: GameState): SerializedGameState {
+export function serialize(state: GameState): SerializedGameState {
   const { challenges: _legacy, ...rest } = state
   return {
     ...rest,
@@ -34,6 +34,8 @@ function serialize(state: GameState): SerializedGameState {
     evolutionPower: serializeBN(state.evolutionPower ?? bn(0)),
     totalOreEarned: serializeBN(state.totalOreEarned),
     stageHp: serializeBN(state.stageHp),
+    echo: serializeBN(state.echo ?? bn(0)),
+    expeditionFloor: Math.max(0, Number(state.expeditionFloor ?? 0) || 0),
     activeBoss: state.activeBoss
       ? {
           name: state.activeBoss.name,
@@ -182,7 +184,7 @@ function migrateGear(
   return { gear, equipped }
 }
 
-function deserialize(raw: SerializedGameState): GameState {
+export function deserialize(raw: SerializedGameState): GameState {
   const base = createInitialState(raw.lastSaveAt ?? Date.now())
   const researchLevels = migrateResearchLevels(raw as SerializedGameState & { researchOwned?: string[] })
   const macrosUnlocked =
@@ -266,6 +268,11 @@ function deserialize(raw: SerializedGameState): GameState {
     craftLevel: Math.max(1, Number(raw.craftLevel ?? 1) || 1),
     craftXp: Math.max(0, Number(raw.craftXp ?? 0) || 0),
     stage: Math.max(1, Number(raw.stage ?? 1) || 1),
+    echo: parseBN((raw as { echo?: string }).echo, 0),
+    expeditionFloor: Math.max(
+      0,
+      Number((raw as { expeditionFloor?: number }).expeditionFloor ?? 0) || 0,
+    ),
     stageHp: (() => {
       const stage = Math.max(1, Number(raw.stage ?? 1) || 1)
       const rebirth = Number(raw.rebirthCount ?? 0) || 0

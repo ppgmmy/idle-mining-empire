@@ -1,4 +1,12 @@
-import { bn, formatBN } from './bigNumber'
+import { bn, formatBN, parseBN } from './bigNumber'
+import {
+  breakthroughCost,
+  canBreakthrough,
+  canRunExpedition,
+  expeditionCost,
+  expeditionEchoReward,
+  expeditionUnlocked,
+} from './endgame'
 import {
   blastStats,
   calcRebirthPayout,
@@ -474,6 +482,47 @@ export function rerollGear(state: GameState, gearId: string): GameState {
 
 export { rerollGearCost, nextRarity, canUpgradeRarity, sellGearRefund }
 
+/** 創世裝備詞條突破：耗星塵，每階詞條效力 ×1.05 */
+export function breakthroughGear(state: GameState, gearId: string): GameState {
+  const item = state.gear.find((g) => g.id === gearId)
+  if (!item || !canBreakthrough(item)) return state
+  const cost = breakthroughCost(item)
+  const paid = spendStardust(state, cost)
+  if (!paid) return state
+  const level = Math.max(0, Math.floor(item.breakthrough ?? 0)) + 1
+  const invested = gearStardustInvested(item).add(cost)
+  const nextItem = withGearStardustInvested(
+    { ...item, breakthrough: level },
+    invested,
+  )
+  let next: GameState = {
+    ...paid,
+    gear: paid.gear.map((g) => (g.id === gearId ? nextItem : g)),
+  }
+  next = pushFloater(next, `突破 +${level} · ${item.name}`)
+  return next
+}
+
+/** Boss 遠征：耗礦石換回響並推進層數（進化≥3） */
+export function runExpedition(state: GameState): GameState {
+  if (!expeditionUnlocked(state) || !canRunExpedition(state)) return state
+  const cost = expeditionCost(state)
+  const paid = spendOre(state, cost)
+  if (!paid) return state
+  const echoGain = expeditionEchoReward(state)
+  const floor = Math.max(0, state.expeditionFloor ?? 0)
+  let next: GameState = {
+    ...paid,
+    echo: (paid.echo ?? bn(0)).add(echoGain),
+    expeditionFloor: floor + 1,
+  }
+  next = pushFloater(
+    next,
+    `遠征成功 · 第 ${floor + 1} 層 · 回響+${formatBN(echoGain)}`,
+  )
+  return next
+}
+
 export function doRebirth(state: GameState): GameState {
   if (!canRebirth(state)) return state
   const nextCount = state.rebirthCount + 1
@@ -523,7 +572,9 @@ export function doEvolve(state: GameState): GameState {
     equipped: state.equipped,
     craftLevel: state.craftLevel,
     craftXp: state.craftXp,
-    // 挑戰歸零：進化後以裝備為核心重打挑戰線
+    echo: state.echo ?? bn(0),
+    expeditionFloor: state.expeditionFloor ?? 0,
+    // 挑戰歸零：進化後以裝備為核心重打挑戰線（回響保留）
     challengeCleared: emptyChallengeCleared(),
     challengeRecords: [],
     activeChallengeId: null,
@@ -539,7 +590,11 @@ export function doEvolve(state: GameState): GameState {
 }
 
 export function describeEvolveNotice(state: GameState): string {
-  return `進化成功！第 ${state.evolutionCount} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生／挑戰歸零 · 星塵／裝備已保留 · 晶體已重置 · 打造經驗+`
+  const evo = state.evolutionCount ?? 0
+  const unlocks: string[] = ['軟牆']
+  if (evo >= 2) unlocks.push('共鳴核心')
+  if (evo >= 3) unlocks.push('Boss遠征')
+  return `進化成功！第 ${evo} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生／挑戰歸零 · 回響／星塵／裝備已保留 · 解鎖：${unlocks.join('／')}`
 }
 
 export function describeRebirthNotice(
@@ -629,6 +684,10 @@ function maybeClearChallenge(state: GameState): GameState {
     activeChallengeId: null,
     challengeCleared: cleared,
     challengeRecords: [record, ...(state.challengeRecords ?? [])],
+  }
+  const echoGain = parseBN(reward?.echo, 0)
+  if (echoGain.gt(0)) {
+    next = { ...next, echo: (next.echo ?? bn(0)).add(echoGain) }
   }
   next = pushFloater(
     next,

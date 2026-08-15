@@ -7,6 +7,20 @@ import { TabNav } from './components/TabNav'
 import { canUpgradeRarity, craftGearCost, rerollGearCost, sellGearRefund } from './game/actions'
 import { bn, formatBN } from './game/bigNumber'
 import {
+  breakthroughAffixFactor,
+  breakthroughCost,
+  canBreakthrough,
+  canRunExpedition,
+  describeSoftWall,
+  echoMult,
+  expeditionCost,
+  expeditionEchoReward,
+  expeditionUnlocked,
+  prestigeScore,
+  resonatorMult,
+  resonatorUnlocked,
+} from './game/endgame'
+import {
   calcRebirthPayout,
   canCraftGear,
   canEvolve,
@@ -845,6 +859,9 @@ export default function App() {
                     })()
                     const deltaPct = gearPowerDeltaPct(item, equippedPeer)
                     const visualTier = ornamentTier(item.rarity)
+                    const btFactor = breakthroughAffixFactor(item)
+                    const canBt = canBreakthrough(item)
+                    const btCost = canBt ? breakthroughCost(item) : null
                     return (
                       <article
                         key={item.id}
@@ -877,6 +894,11 @@ export default function App() {
                               <span className="gear-power">
                                 戰力 ×{gearItemPower(item).toFixed(2)}
                               </span>
+                              {(item.breakthrough ?? 0) > 0 ? (
+                                <span className="gear-breakthrough">
+                                  突破+{item.breakthrough}
+                                </span>
+                              ) : null}
                               {deltaPct != null ? (
                                 <span
                                   className={
@@ -925,6 +947,16 @@ export default function App() {
                             >
                               {upgrading ? '晉升' : '重鑄'} · {formatBN(cost)} 星塵
                             </button>
+                            {canBt && btCost ? (
+                              <button
+                                type="button"
+                                className="secondary-btn"
+                                disabled={!state.stardust.gte(btCost)}
+                                onClick={() => game.breakthroughGear(item.id)}
+                              >
+                                突破 · {formatBN(btCost)} 星塵
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               className="ghost-btn"
@@ -943,7 +975,9 @@ export default function App() {
                           {item.affixes.map((a) => {
                             const info = AFFIX_META[a.id]
                             const primary = isSlotPrimary(item.slot, a.id)
-                            const shown = effectiveAffixValue(item.slot, a)
+                            const shown =
+                              effectiveAffixValue(item.slot, a) *
+                              btFactor.toNumber()
                             return (
                               <li
                                 key={`${item.id}-${a.id}-${a.value}`}
@@ -990,10 +1024,18 @@ export default function App() {
               <p className="evolve-status">
                 目前進化第 {state.evolutionCount} 階 · 全局倍率 ×
                 {formatBN(evolutionMult(state))}
+                {resonatorUnlocked(state)
+                  ? ` · 共鳴 ×${formatBN(resonatorMult(state))}`
+                  : ''}
+                {' · '}
+                效率分 {formatBN(prestigeScore(state))}
               </p>
             ) : (
               <p className="evolve-status">尚未進化 · 全局倍率 ×1</p>
             )}
+            {describeSoftWall(state) ? (
+              <p className="soft-wall-hint">{describeSoftWall(state)}</p>
+            ) : null}
             <div className="rebirth-actions">
               {(() => {
                 const payout = calcRebirthPayout(state)
@@ -1009,6 +1051,31 @@ export default function App() {
                 )
               })()}
             </div>
+            {expeditionUnlocked(state) ? (
+              <div className="expedition-card">
+                <div className="evolve-card-head">
+                  <strong>Boss 遠征</strong>
+                  <span className="evolve-card-req">
+                    第 {(state.expeditionFloor ?? 0) + 1} 層
+                  </span>
+                </div>
+                <p className="hint rebirth-lede">
+                  耗礦石換回響（進化保留）· 回響目前 ×{formatBN(echoMult(state))}
+                </p>
+                <button
+                  type="button"
+                  className="secondary-btn evolve-btn"
+                  disabled={!canRunExpedition(state)}
+                  onClick={game.runExpedition}
+                >
+                  {state.activeBoss
+                    ? '戰鬥中無法遠征'
+                    : `遠征 · ${formatBN(expeditionCost(state))} 礦石 · 回響+${formatBN(expeditionEchoReward(state))}`}
+                </button>
+              </div>
+            ) : (state.evolutionCount ?? 0) >= 1 ? (
+              <p className="hint">進化第 3 階解鎖 Boss 遠征</p>
+            ) : null}
             <div className="evolve-card">
               <div className="evolve-card-head">
                 <strong>進化 #{(state.evolutionCount ?? 0) + 1}</strong>
@@ -1028,8 +1095,9 @@ export default function App() {
                   {formatBN(evolutionFactor(state.rebirthCount))}（今轉 +
                   {formatBN(evolutionSlice(state.rebirthCount).mul(100))}%）
                 </li>
-                <li>保留：星塵、裝備、打造等級（並贈打造經驗）</li>
+                <li>保留：回響、星塵、裝備、打造、遠征層數</li>
                 <li>重置：礦石進度、轉生、研究、晶體、設施、限制挑戰</li>
+                <li>解鎖：軟牆 → 共鳴(2階) → 遠征(3階)</li>
               </ul>
               <button
                 type="button"
@@ -1037,7 +1105,7 @@ export default function App() {
                 disabled={!canEvolve(state)}
                 onClick={() => {
                   const ok = window.confirm(
-                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度、晶體與限制挑戰（轉生歸零），保留星塵與裝備。`,
+                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度、晶體與限制挑戰（轉生歸零），保留回響、星塵與裝備。`,
                   )
                   if (ok) game.evolve()
                 }}
@@ -1048,7 +1116,7 @@ export default function App() {
             <div className="stack muted-block rebirth-challenges">
               <h3>限制挑戰</h3>
               <p className="hint rebirth-lede">
-                三線 Lv1–10×4／之後×12 · 只獎點擊／閒置／離線 · 轉生保留／進化歸零 · 可退出
+                進化後主線 · 獎點擊／閒置／離線＋回響 · 轉生保留／進化歸零挑戰進度（回響永久）
               </p>
               <div className="rebirth-challenge-list">
                 {challengeOffers.map((c) => {

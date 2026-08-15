@@ -199,6 +199,8 @@ export type GearItem = {
   quality?: number
   /** 累計付出星塵（字串 BN）；出售退 90% */
   stardustInvested?: string
+  /** 創世後詞條突破次數（永久跟件） */
+  breakthrough?: number
 }
 
 /** 同槽造型：emoji／符號，打造時隨機一款 */
@@ -266,6 +268,8 @@ export type ChallengeReward = {
   stardustInterest?: number
   /** 永久額外自動化產線 */
   automationLines?: number
+  /** 進化回響（進化保留） */
+  echo?: number | string
 }
 
 /** 進行中／可挑戰的一關（無限級） */
@@ -347,7 +351,7 @@ export type GameState = {
   equipped: Partial<Record<GearItem['slot'], string>>
   /** 各限制挑戰線已通關最高等級 */
   challengeCleared: Record<ChallengeRule, number>
-  /** 通關紀錄（細字列表可點入） */
+  /** 挑戰通關紀錄（細字列表可點入） */
   challengeRecords: ChallengeRecord[]
   automations: AutomationRule[]
   activeChallengeId: string | null
@@ -364,6 +368,10 @@ export type GameState = {
   stage: number
   /** 當前關卡礦石 HP */
   stageHp: BN
+  /** 進化回響（挑戰／遠征產出；進化保留） */
+  echo: BN
+  /** Boss 遠征層數（進化≥3 解鎖；永久） */
+  expeditionFloor: number
   lastSaveAt: number
   totalOreEarned: BN
   floaters: Array<{ id: number; text: string; createdAt: number }>
@@ -384,6 +392,7 @@ export type SerializedGameState = Omit<
   | 'totalOreEarned'
   | 'activeBoss'
   | 'stageHp'
+  | 'echo'
 > & {
   ore: string
   crystals: string
@@ -395,6 +404,8 @@ export type SerializedGameState = Omit<
   evolutionPower?: string
   totalOreEarned: string
   stageHp?: string
+  echo?: string
+  expeditionFloor?: number
   activeBoss: null | {
     name: string
     level: number

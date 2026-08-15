@@ -14,6 +14,7 @@ import type {
   ResearchNode,
 } from './types'
 import { AFFIX_META, QUALITY_BANDS, RARITY_ORDER, SLOT_ICONS, SLOT_META } from './types'
+import { breakthroughAffixFactor, echoMult, rebirthSoftWallMult, resonatorMult } from './endgame'
 
 /**
  * 全研究樹：自動化解鎖（礦石）＋奇點帳本（晶體＋星塵，點擊／閒置／離線皆加）。
@@ -138,28 +139,37 @@ export function challengeGoalOre(rule: ChallengeRule, level: number): BN {
   return at10.mul(bn(CHALLENGE_GOAL_GROWTH_AFTER_10).pow(lv - 10)).floor()
 }
 
-/** 挑戰獎勵只保留產量詞條（點擊／閒置／離線） */
+/** 挑戰獎勵只保留產量詞條（點擊／閒置／離線）；進化後獎勵顯著加強 */
 const CHALLENGE_REWARD_KEEP = 0.25
 
-export function challengeReward(rule: ChallengeRule, level: number): ChallengeReward {
+export function challengeReward(
+  rule: ChallengeRule,
+  level: number,
+  evolutionCount = 0,
+): ChallengeReward {
   const lv = Math.max(1, Math.floor(level))
-  // BN 計成長，避免 1.06^lv 溢成 Infinity
+  const evo = Math.max(0, Math.floor(evolutionCount))
+  // 進化後挑戰成為主線：獎勵隨進化階放大
+  const evoScale = 1 + evo * 0.4
   const scale = bn(1.06)
     .pow(lv - 1)
     .mul(CHALLENGE_REWARD_KEEP)
+    .mul(evoScale)
+  const echoGain = lv * (1 + evo)
 
   if (rule === 'clickOnly') {
     const click = scale.mul(0.012)
     const clickN = click.toNumber()
     return {
       label: Number.isFinite(clickN)
-        ? `永久點擊+${Math.round(clickN * 1000) / 10}%`
-        : `永久點擊×${formatBN(ONE.add(click))}`,
+        ? `永久點擊+${Math.round(clickN * 1000) / 10}% · 回響+${echoGain}`
+        : `永久點擊×${formatBN(ONE.add(click))} · 回響+${echoGain}`,
       affix: {
         clickMult: Number.isFinite(clickN)
           ? Number(clickN.toFixed(4))
           : click.toString(),
       },
+      echo: echoGain,
     }
   }
   if (rule === 'noAutomation') {
@@ -167,26 +177,28 @@ export function challengeReward(rule: ChallengeRule, level: number): ChallengeRe
     const idleN = idle.toNumber()
     return {
       label: Number.isFinite(idleN)
-        ? `永久閒置+${Math.round(idleN * 1000) / 10}%`
-        : `永久閒置×${formatBN(ONE.add(idle))}`,
+        ? `永久閒置+${Math.round(idleN * 1000) / 10}% · 回響+${echoGain}`
+        : `永久閒置×${formatBN(ONE.add(idle))} · 回響+${echoGain}`,
       affix: {
         idleRate: Number.isFinite(idleN)
           ? Number(idleN.toFixed(4))
           : idle.toString(),
       },
+      echo: echoGain,
     }
   }
   const offline = scale.mul(0.012)
   const offlineN = offline.toNumber()
   return {
     label: Number.isFinite(offlineN)
-      ? `永久離線+${Math.round(offlineN * 1000) / 10}%`
-      : `永久離線×${formatBN(ONE.add(offline))}`,
+      ? `永久離線+${Math.round(offlineN * 1000) / 10}% · 回響+${echoGain}`
+      : `永久離線×${formatBN(ONE.add(offline))} · 回響+${echoGain}`,
     affix: {
       offlineBonus: Number.isFinite(offlineN)
         ? Number(offlineN.toFixed(4))
         : offline.toString(),
     },
+    echo: echoGain,
   }
 }
 
@@ -205,9 +217,10 @@ export function parseChallengeOfferId(
 export function buildChallengeOffer(
   rule: ChallengeRule,
   level: number,
+  evolutionCount = 0,
 ): ChallengeOffer {
   const line = CHALLENGE_LINES[rule]
-  const reward = challengeReward(rule, level)
+  const reward = challengeReward(rule, level, evolutionCount)
   return {
     id: challengeOfferId(rule, level),
     rule,
@@ -226,15 +239,17 @@ export function nextChallengeLevel(state: GameState, rule: ChallengeRule): numbe
 }
 
 export function listChallengeOffers(state: GameState): ChallengeOffer[] {
+  const evo = state.evolutionCount ?? 0
   return CHALLENGE_RULES.map((rule) =>
-    buildChallengeOffer(rule, nextChallengeLevel(state, rule)),
+    buildChallengeOffer(rule, nextChallengeLevel(state, rule), evo),
   )
 }
 
 export function getActiveChallenge(state: GameState): ChallengeOffer | null {
   if (!state.activeChallengeId) return null
+  const evo = state.evolutionCount ?? 0
   const parsed = parseChallengeOfferId(state.activeChallengeId)
-  if (parsed) return buildChallengeOffer(parsed.rule, parsed.level)
+  if (parsed) return buildChallengeOffer(parsed.rule, parsed.level, evo)
   // 舊 id
   const legacy: Record<string, ChallengeRule> = {
     'click-gauntlet': 'clickOnly',
@@ -243,7 +258,7 @@ export function getActiveChallenge(state: GameState): ChallengeOffer | null {
   }
   const rule = legacy[state.activeChallengeId]
   if (!rule) return null
-  return buildChallengeOffer(rule, nextChallengeLevel(state, rule))
+  return buildChallengeOffer(rule, nextChallengeLevel(state, rule), evo)
 }
 
 export function emptyChallengeCleared(): Record<ChallengeRule, number> {
@@ -429,11 +444,12 @@ export function effectiveAffixValue(slot: GearSlot, affix: Affix): number {
   return Number((value * SECONDARY_AFFIX_FACTOR).toFixed(6))
 }
 
-/** 單件綜合戰力：各詞條 (1+效力) 互乘 */
+/** 單件綜合戰力：各詞條 (1+效力) 互乘（含突破） */
 export function gearItemPower(item: GearItem): number {
   let power = 1
+  const bt = breakthroughAffixFactor(item).toNumber()
   for (const affix of item.affixes) {
-    power *= 1 + effectiveAffixValue(item.slot, affix)
+    power *= 1 + effectiveAffixValue(item.slot, affix) * (Number.isFinite(bt) ? bt : 1)
   }
   const quality = item.quality ?? 1
   return power * (0.98 + quality * 0.02)
@@ -916,6 +932,8 @@ export function createInitialState(now = Date.now()): GameState {
     craftXp: 0,
     stage: 1,
     stageHp: stageMaxHp(1, 0),
+    echo: ZERO,
+    expeditionFloor: 0,
     lastSaveAt: now,
     totalOreEarned: ZERO,
     floaters: [],
@@ -1178,7 +1196,9 @@ export function canStartChallenge(state: GameState, id: string): boolean {
     listChallengeOffers(state).find((c) => c.id === id) ??
     (() => {
       const parsed = parseChallengeOfferId(id)
-      return parsed ? buildChallengeOffer(parsed.rule, parsed.level) : null
+      return parsed
+        ? buildChallengeOffer(parsed.rule, parsed.level, state.evolutionCount ?? 0)
+        : null
     })()
   if (!offer) return false
   // 只能打下一關
@@ -1196,7 +1216,10 @@ export function gearAffixProduct(state: GameState, id: AffixId): BN {
     if (!item || item.slot !== slot) continue
     for (const affix of item.affixes) {
       if (affix.id === id) {
-        product = product.mul(ONE.add(bn(effectiveAffixValue(item.slot, affix))))
+        const boosted = bn(effectiveAffixValue(item.slot, affix)).mul(
+          breakthroughAffixFactor(item),
+        )
+        product = product.mul(ONE.add(boosted))
       }
     }
   }
@@ -1204,13 +1227,18 @@ export function gearAffixProduct(state: GameState, id: AffixId): BN {
 }
 
 /**
- * 最終倍率（BN）：研究 × 挑戰 × 裝備
+ * 最終倍率（BN）：研究 × 挑戰 × 裝備 × 回響 × 共鳴
  * 唔好經 JS number，避免 Infinity → Decimal.mul 變 0
  */
 export function getAffixMult(state: GameState, id: AffixId): BN {
   return researchAffixProduct(state, id)
     .mul(challengeAffixProduct(state, id))
     .mul(gearAffixProduct(state, id))
+}
+
+/** 回響 × 共鳴：只喺產量公式套一次，避免多次 getAffixMult 重疊 */
+export function endgameYieldMult(state: GameState): BN {
+  return echoMult(state).mul(resonatorMult(state))
 }
 
 /** 兼容舊測試／顯示：等價於倍率 − 1（小數範圍） */
@@ -1226,6 +1254,7 @@ export function getClickGain(state: GameState): BN {
     .mul(evolutionMult(state))
     .mul(getAffixMult(state, 'clickMult'))
     .mul(getAffixMult(state, 'minePower'))
+    .mul(endgameYieldMult(state))
     .mul(bn(3).mul(bn(1 + DRILL_CLICK_ADD).pow(state.drillLevel)))
     .mul(bn(PULSE_PER_LEVEL).pow(pulseLv))
   if (challenge?.rule === 'halfIdle') {
@@ -1269,6 +1298,7 @@ export function getIdleRatePerSec(state: GameState): BN {
     .mul(evolutionMult(state))
     .mul(getAffixMult(state, 'idleRate'))
     .mul(getAffixMult(state, 'minePower'))
+    .mul(endgameYieldMult(state))
     .mul(bn(CONVEYOR_PER_LEVEL).pow(conveyorLv))
     .mul(bn(1.15).pow(autoLines))
 
@@ -1308,7 +1338,9 @@ export function canRebirth(state: GameState): boolean {
 }
 
 export function rebirthRequirement(state: GameState): BN {
-  return bn(1000).mul(bn(1.8).pow(state.rebirthCount))
+  return bn(1000)
+    .mul(bn(1.8).pow(state.rebirthCount))
+    .mul(rebirthSoftWallMult(state))
 }
 
 /** 需轉生達標先可進化；重置進度與晶體，保留星塵／裝備換全局倍率 */

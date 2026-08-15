@@ -309,7 +309,11 @@ describe('progression', () => {
     expect(evolutionMult(state).eq(expected)).toBe(true)
     const noEvo = { ...state, evolutionCount: 0, evolutionPower: bn(0) }
     const ratio = getClickGain(state).div(getClickGain(noEvo))
-    expect(ratio.sub(evolutionMult(state)).abs().lt(1e-9)).toBe(true)
+    // evo≥2 時共鳴核心另乘產量一次
+    const expectedGainMult = evolutionMult(state).mul(
+      bn(1.12).pow(Math.max(0, (state.evolutionCount ?? 0) - 1)),
+    )
+    expect(ratio.sub(expectedGainMult).abs().lt(1e-9)).toBe(true)
   })
 
   it('auto-rebirth triggers on tick when enabled and canRebirth', () => {
