@@ -1,3 +1,10 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "date": "2026-08-15",
+      "id": "set-bonus-panel",
+      "title": "套裝加成面板",
+      "description": "裝備頁清楚列出破岩／永脈／豐礦 2／4／7 件進度與效果。"
+    }
+  ]
 }
