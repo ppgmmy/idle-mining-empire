@@ -32,7 +32,7 @@ function genesisItem(overrides: Partial<GearItem> = {}): GearItem {
     name: '創世測試',
     slot: 'gloves',
     rarity: 'genesis',
-    affixes: [{ id: 'clickMult', value: 0.1 }],
+    affixes: [{ id: 'clickMult', label: '點擊', value: 0.1 }],
     rerolls: 0,
     ...overrides,
   }

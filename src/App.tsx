@@ -7,7 +7,6 @@ import { TabNav } from './components/TabNav'
 import { canUpgradeRarity, craftGearCost, rerollGearCost, sellGearRefund } from './game/actions'
 import { bn, formatBN } from './game/bigNumber'
 import {
-  breakthroughAffixFactor,
   breakthroughCost,
   canBreakthrough,
   canRunExpedition,
@@ -20,6 +19,16 @@ import {
   resonatorMult,
   resonatorUnlocked,
 } from './game/endgame'
+import {
+  assignGearSet,
+  describeSetStatus,
+  GEAR_SETS,
+  listResonateFodder,
+  lockedAffixIds,
+  maxAffixLocks,
+  pieceAffixBoost,
+  resonanceLevel,
+} from './game/gearLoop'
 import {
   calcRebirthPayout,
   canCraftGear,
@@ -601,9 +610,10 @@ export default function App() {
           <section className="panel gear-hub">
             <h2>裝備</h2>
             <p className="lede">
-              撳槽位篩選庫存 · 打造／晉升／重鑄用星塵 ·{' '}
+              打造→晉升→創世突破→鎖詞重鑄→餵料共鳴→套裝 ·{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
+            <p className="hint gear-set-status">{describeSetStatus(state)}</p>
             <div className="gear-doll" aria-label="裝備槽位">
               {GEAR_SLOTS.map((slot) => {
                 const eqId = state.equipped[slot]
@@ -859,9 +869,15 @@ export default function App() {
                     })()
                     const deltaPct = gearPowerDeltaPct(item, equippedPeer)
                     const visualTier = ornamentTier(item.rarity)
-                    const btFactor = breakthroughAffixFactor(item)
+                    const boost = pieceAffixBoost(item)
                     const canBt = canBreakthrough(item)
                     const btCost = canBt ? breakthroughCost(item) : null
+                    const setId = assignGearSet(item)
+                    const setDef = GEAR_SETS[setId]
+                    const locks = lockedAffixIds(item)
+                    const lockMax = maxAffixLocks(item)
+                    const fodder = listResonateFodder(state, item.id)
+                    const reso = resonanceLevel(item)
                     return (
                       <article
                         key={item.id}
@@ -888,6 +904,7 @@ export default function App() {
                             </span>
                             <span className="gear-sub">
                               {meta.label}·{meta.role}
+                              <span className="gear-set-tag">{setDef.name}套</span>
                               <span className="gear-quality">
                                 {qualityLabel(item.quality)}
                               </span>
@@ -898,6 +915,9 @@ export default function App() {
                                 <span className="gear-breakthrough">
                                   突破+{item.breakthrough}
                                 </span>
+                              ) : null}
+                              {reso > 0 ? (
+                                <span className="gear-resonance">共鳴+{reso}</span>
                               ) : null}
                               {deltaPct != null ? (
                                 <span
@@ -945,7 +965,12 @@ export default function App() {
                               disabled={!canAfford}
                               onClick={() => game.rerollGear(item.id)}
                             >
-                              {upgrading ? '晉升' : '重鑄'} · {formatBN(cost)} 星塵
+                              {upgrading
+                                ? '晉升'
+                                : locks.length > 0
+                                  ? `定向重鑄(${locks.length}鎖)`
+                                  : '重鑄'}{' '}
+                              · {formatBN(cost)} 星塵
                             </button>
                             {canBt && btCost ? (
                               <button
@@ -954,7 +979,22 @@ export default function App() {
                                 disabled={!state.stardust.gte(btCost)}
                                 onClick={() => game.breakthroughGear(item.id)}
                               >
-                                突破 · {formatBN(btCost)} 星塵
+                                詞條上限突破 · {formatBN(btCost)} 星塵
+                              </button>
+                            ) : null}
+                            {canBt && fodder.length > 0 ? (
+                              <button
+                                type="button"
+                                className="secondary-btn"
+                                onClick={() => {
+                                  const f = fodder[0]!
+                                  const ok = window.confirm(
+                                    `將「${f.name}」注入共鳴？\n會消耗該件（不退星塵），目標共鳴+1。`,
+                                  )
+                                  if (ok) game.resonateGear(item.id, f.id)
+                                }}
+                              >
+                                餵料共鳴 · {fodder.length} 可餵
                               </button>
                             ) : null}
                             <button
@@ -976,8 +1016,8 @@ export default function App() {
                             const info = AFFIX_META[a.id]
                             const primary = isSlotPrimary(item.slot, a.id)
                             const shown =
-                              effectiveAffixValue(item.slot, a) *
-                              btFactor.toNumber()
+                              effectiveAffixValue(item.slot, a) * boost.toNumber()
+                            const locked = locks.includes(a.id)
                             return (
                               <li
                                 key={`${item.id}-${a.id}-${a.value}`}
@@ -990,10 +1030,36 @@ export default function App() {
                                 <span className="affix-val">
                                   {formatAffixMult(shown)}
                                 </span>
+                                {lockMax > 0 ? (
+                                  <button
+                                    type="button"
+                                    className={
+                                      locked
+                                        ? 'affix-lock-btn on'
+                                        : 'affix-lock-btn'
+                                    }
+                                    disabled={!locked && locks.length >= lockMax}
+                                    title={
+                                      locked
+                                        ? '解除重鑄鎖定'
+                                        : `鎖定為重鑄目標（${locks.length}/${lockMax}）`
+                                    }
+                                    onClick={() =>
+                                      game.toggleAffixLock(item.id, a.id)
+                                    }
+                                  >
+                                    {locked ? '鎖' : '目標'}
+                                  </button>
+                                ) : null}
                               </li>
                             )
                           })}
                         </ul>
+                        {canBt && lockMax <= 0 ? (
+                          <p className="hint gear-lock-hint">
+                            突破 1 次解鎖重鑄目標鎖定
+                          </p>
+                        ) : null}
                       </article>
                     )
                   })}

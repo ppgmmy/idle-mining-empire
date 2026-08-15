@@ -1703,6 +1703,54 @@ textarea {
   font-weight: 700;
 }
 
+.gear-resonance {
+  color: #f0b429;
+  font-weight: 700;
+}
+
+.gear-set-tag {
+  color: #7ee8d6;
+  font-weight: 700;
+}
+
+.gear-set-status {
+  margin: 0 0 8px;
+}
+
+.gear-lock-hint {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+}
+
+.affix-lock-btn {
+  margin-left: auto;
+  border: 1px solid rgba(154, 215, 255, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.affix-lock-btn.on {
+  border-color: rgba(240, 180, 41, 0.55);
+  color: #f0b429;
+}
+
+.affix-lock-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.affix-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .evolve-card {
   display: grid;
   gap: 8px;

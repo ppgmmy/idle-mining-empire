@@ -24,6 +24,8 @@ import {
   strikeStage,
   rerollGear,
   breakthroughGear,
+  toggleAffixLock,
+  resonateGear,
   runExpedition,
   spawnBoss,
   startChallenge,
@@ -38,7 +40,7 @@ import { bn, formatBN } from './bigNumber'
 import { submitLeaderboardScore } from './leaderboard'
 import { calcRebirthPayout, createInitialState } from './state'
 import { loadGame, saveGame } from './save'
-import type { FacilityId, GameState, GearItem, GearSlot, TabId } from './types'
+import type { FacilityId, GameState, GearItem, GearSlot, TabId, AffixId } from './types'
 import { TICK_MS } from './types'
 
 const LEADERBOARD_SYNC_MS = 60_000
@@ -266,6 +268,10 @@ export function useGame() {
     rerollGear: (gearId: string) => commit((s) => rerollGear(s, gearId)),
     breakthroughGear: (gearId: string) =>
       commit((s) => breakthroughGear(s, gearId)),
+    toggleAffixLock: (gearId: string, affixId: AffixId) =>
+      commit((s) => toggleAffixLock(s, gearId, affixId)),
+    resonateGear: (targetId: string, fodderId: string) =>
+      commit((s) => resonateGear(s, targetId, fodderId)),
     runExpedition: () => commit((s) => runExpedition(s)),
     rebirth: () => {
       const before = stateRef.current.rebirthCount

@@ -8,6 +8,12 @@ import {
   expeditionUnlocked,
 } from './endgame'
 import {
+  canResonateInto,
+  lockedAffixIds,
+  maxAffixLocks,
+  rollAffixesWithLocks,
+} from './gearLoop'
+import {
   blastStats,
   calcRebirthPayout,
   canCraftGear,
@@ -47,6 +53,7 @@ import {
   isAutomationUnlocked,
   rerollGearCost,
   rollAffixes,
+  remakeAffix,
   rollGear,
   sellGearRefund,
   gearStardustInvested,
@@ -60,7 +67,7 @@ import {
 } from './state'
 import { isAdmin } from './admin'
 import { grantOre, spendCrystals, spendOre, spendStardust } from './save'
-import type { FacilityId, GameState, GearSlot, TabId } from './types'
+import type { AffixId, FacilityId, GameState, GearSlot, TabId } from './types'
 import { GEAR_SLOTS, OFFLINE_CAP_HOURS, RARITY_ORDER } from './types'
 
 /** 管理員一鍵開通：研究保底等級 */
@@ -453,7 +460,7 @@ export function sellUnequippedGear(
   }
 }
 
-/** 晉升／重鑄：升 1 稀有度並將舊詞條互乘本階升幅；滿階則整條重累乘（星塵） */
+/** 晉升／重鑄：升 1 稀有度並將舊詞條互乘本階升幅；滿階則整條重累乘（可鎖目標） */
 export function rerollGear(state: GameState, gearId: string): GameState {
   const item = state.gear.find((g) => g.id === gearId)
   if (!item) return state
@@ -463,13 +470,17 @@ export function rerollGear(state: GameState, gearId: string): GameState {
   const willUpgrade = canUpgradeRarity(item.rarity)
   const rarity = nextRarity(item.rarity)
   const invested = gearStardustInvested(item).add(cost)
+  const affixes = willUpgrade
+    ? upgradeAffixesOnRarityUp(item, rarity)
+    : rollAffixesWithLocks(item, rarity, rollAffixes, (def, r, q) =>
+        remakeAffix(def.id, r, q),
+      )
   const nextItem = withGearStardustInvested(
     {
       ...item,
       rarity,
-      affixes: willUpgrade
-        ? upgradeAffixesOnRarityUp(item, rarity)
-        : rollAffixes(rarity, item.slot, item.quality ?? 1),
+      affixes,
+      lockedAffixes: lockedAffixIds({ ...item, affixes }),
       rerolls: (item.rerolls ?? 0) + 1,
     },
     invested,
@@ -482,7 +493,7 @@ export function rerollGear(state: GameState, gearId: string): GameState {
 
 export { rerollGearCost, nextRarity, canUpgradeRarity, sellGearRefund }
 
-/** 創世裝備詞條突破：耗星塵，每階詞條效力 ×1.05 */
+/** 創世詞條上限突破：耗星塵；解鎖重鑄鎖定格數 */
 export function breakthroughGear(state: GameState, gearId: string): GameState {
   const item = state.gear.find((g) => g.id === gearId)
   if (!item || !canBreakthrough(item)) return state
@@ -499,7 +510,69 @@ export function breakthroughGear(state: GameState, gearId: string): GameState {
     ...paid,
     gear: paid.gear.map((g) => (g.id === gearId ? nextItem : g)),
   }
-  next = pushFloater(next, `突破 +${level} · ${item.name}`)
+  const locks = maxAffixLocks(nextItem)
+  next = pushFloater(
+    next,
+    locks > 0
+      ? `詞條上限突破 +${level} · 可鎖 ${locks} 詞 · ${item.name}`
+      : `詞條上限突破 +${level} · ${item.name}`,
+  )
+  return next
+}
+
+/** 切換重鑄目標鎖定（需突破解鎖格數） */
+export function toggleAffixLock(
+  state: GameState,
+  gearId: string,
+  affixId: AffixId,
+): GameState {
+  const item = state.gear.find((g) => g.id === gearId)
+  if (!item || item.rarity !== 'genesis') return state
+  if (!item.affixes.some((a) => a.id === affixId)) return state
+  const max = maxAffixLocks(item)
+  if (max <= 0) return state
+  const cur = lockedAffixIds(item)
+  let nextLocks: AffixId[]
+  if (cur.includes(affixId)) {
+    nextLocks = cur.filter((id) => id !== affixId)
+  } else {
+    if (cur.length >= max) return state
+    nextLocks = [...cur, affixId]
+  }
+  const nextItem = {
+    ...item,
+    lockedAffixes: nextLocks.length > 0 ? nextLocks : undefined,
+  }
+  return {
+    ...state,
+    gear: state.gear.map((g) => (g.id === gearId ? nextItem : g)),
+  }
+}
+
+/** 裝備共鳴：消耗未穿戴餵料，目標創世件 +1 共鳴 */
+export function resonateGear(
+  state: GameState,
+  targetId: string,
+  fodderId: string,
+): GameState {
+  const target = state.gear.find((g) => g.id === targetId)
+  const fodder = state.gear.find((g) => g.id === fodderId)
+  if (!target || !fodder) return state
+  if (state.equipped[fodder.slot] === fodder.id) return state
+  if (!canResonateInto(target, fodder)) return state
+  const level = Math.max(0, Math.floor(target.resonance ?? 0)) + 1
+  const nextTarget = { ...target, resonance: level }
+  const equipped = { ...state.equipped }
+  // 餵料唔應已穿；雙重保險
+  if (equipped[fodder.slot] === fodder.id) delete equipped[fodder.slot]
+  let next: GameState = {
+    ...state,
+    equipped,
+    gear: state.gear
+      .filter((g) => g.id !== fodderId)
+      .map((g) => (g.id === targetId ? nextTarget : g)),
+  }
+  next = pushFloater(next, `裝備共鳴 +${level} · ${target.name}`)
   return next
 }
 

@@ -14,7 +14,14 @@ import type {
   ResearchNode,
 } from './types'
 import { AFFIX_META, QUALITY_BANDS, RARITY_ORDER, SLOT_ICONS, SLOT_META } from './types'
-import { breakthroughAffixFactor, echoMult, rebirthSoftWallMult, resonatorMult } from './endgame'
+import { echoMult, rebirthSoftWallMult, resonatorMult } from './endgame'
+import {
+  assignGearSet,
+  ensureGearLoopFields,
+  pieceAffixBoost,
+  rerollLockCostMult,
+  setBonusMult,
+} from './gearLoop'
 
 /**
  * 全研究樹：自動化解鎖（礦石）＋奇點帳本（晶體＋星塵，點擊／閒置／離線皆加）。
@@ -378,6 +385,19 @@ function makeAffix(
   }
 }
 
+/** 依詞條 id 重累乘到指定稀有度（定向重鑄用） */
+export function remakeAffix(
+  id: AffixId,
+  rarity: Rarity,
+  quality = 1,
+): Affix {
+  return makeAffix(
+    { id, label: AFFIX_META[id].label },
+    rarity,
+    quality,
+  )
+}
+
 /** 打造：詞條由普通起每階升幅互乘至目前稀有度，再 × 品質 */
 export function rollAffixes(
   rarity: GearItem['rarity'],
@@ -444,12 +464,12 @@ export function effectiveAffixValue(slot: GearSlot, affix: Affix): number {
   return Number((value * SECONDARY_AFFIX_FACTOR).toFixed(6))
 }
 
-/** 單件綜合戰力：各詞條 (1+效力) 互乘（含突破） */
+/** 單件綜合戰力：各詞條 (1+效力) 互乘（含突破／共鳴） */
 export function gearItemPower(item: GearItem): number {
   let power = 1
-  const bt = breakthroughAffixFactor(item).toNumber()
+  const boost = pieceAffixBoost(item).toNumber()
   for (const affix of item.affixes) {
-    power *= 1 + effectiveAffixValue(item.slot, affix) * (Number.isFinite(bt) ? bt : 1)
+    power *= 1 + effectiveAffixValue(item.slot, affix) * (Number.isFinite(boost) ? boost : 1)
   }
   const quality = item.quality ?? 1
   return power * (0.98 + quality * 0.02)
@@ -585,11 +605,12 @@ export function ensureGearIdentity(item: GearItem): GearItem {
     item.hue === hue &&
     item.variant === variant &&
     item.quality === quality &&
-    item.name === name
+    item.name === name &&
+    item.setId
   ) {
-    return item
+    return ensureGearLoopFields(item)
   }
-  return { ...item, hue, variant, quality, name }
+  return ensureGearLoopFields({ ...item, hue, variant, quality, name })
 }
 
 /**
@@ -600,7 +621,7 @@ export function rerollGearCost(item: GearItem): BN {
   const i = Math.max(0, rarityIndex(item.rarity))
   const rerolls = item.rerolls ?? 0
   const base = bn(48).mul(bn(1.9).pow(i))
-  return base.mul(bn(2.15).pow(rerolls))
+  return base.mul(bn(2.15).pow(rerolls)).mul(rerollLockCostMult(item)).floor()
 }
 
 /** 打造固定星塵價 */
@@ -721,7 +742,7 @@ export function rollGear(
   const variant = Math.floor(Math.random() * SLOT_ICONS[slot].length)
   const id = `${slot}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
   const seed = hashSeed(id) ^ hue ^ (variant * 97)
-  return {
+  return ensureGearLoopFields({
     id,
     name: buildGearName(slot, seed, opts?.tag ?? 'craft'),
     slot,
@@ -731,7 +752,15 @@ export function rollGear(
     hue,
     variant,
     quality,
-  }
+    setId: assignGearSet({
+      id,
+      name: '',
+      slot,
+      rarity,
+      affixes: [],
+      hue,
+    }),
+  })
 }
 
 export type FacilityDef = {
@@ -1206,7 +1235,7 @@ export function canStartChallenge(state: GameState, id: string): boolean {
   return state.rebirthCount >= offer.unlockRebirth
 }
 
-/** 已穿戴裝備詞條互乘（BN）：(1+v1)×(1+v2)×… */
+/** 已穿戴裝備詞條互乘（BN）：(1+v1)×(1+v2)×…（含突破／共鳴） */
 export function gearAffixProduct(state: GameState, id: AffixId): BN {
   let product = ONE
   for (const slot of Object.keys(state.equipped) as GearSlot[]) {
@@ -1217,7 +1246,7 @@ export function gearAffixProduct(state: GameState, id: AffixId): BN {
     for (const affix of item.affixes) {
       if (affix.id === id) {
         const boosted = bn(effectiveAffixValue(item.slot, affix)).mul(
-          breakthroughAffixFactor(item),
+          pieceAffixBoost(item),
         )
         product = product.mul(ONE.add(boosted))
       }
@@ -1227,13 +1256,14 @@ export function gearAffixProduct(state: GameState, id: AffixId): BN {
 }
 
 /**
- * 最終倍率（BN）：研究 × 挑戰 × 裝備 × 回響 × 共鳴
+ * 最終倍率（BN）：研究 × 挑戰 × 裝備 × 套裝
  * 唔好經 JS number，避免 Infinity → Decimal.mul 變 0
  */
 export function getAffixMult(state: GameState, id: AffixId): BN {
   return researchAffixProduct(state, id)
     .mul(challengeAffixProduct(state, id))
     .mul(gearAffixProduct(state, id))
+    .mul(setBonusMult(state, id))
 }
 
 /** 回響 × 共鳴：只喺產量公式套一次，避免多次 getAffixMult 重疊 */

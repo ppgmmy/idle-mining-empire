@@ -201,6 +201,12 @@ export type GearItem = {
   stardustInvested?: string
   /** 創世後詞條突破次數（永久跟件） */
   breakthrough?: number
+  /** 套裝：破岩／永脈／豐礦 */
+  setId?: 'strike' | 'vein' | 'ore'
+  /** 裝備共鳴階（餵料注入） */
+  resonance?: number
+  /** 重鑄目標：鎖定嘅詞條 id（突破解鎖） */
+  lockedAffixes?: AffixId[]
 }
 
 /** 同槽造型：emoji／符號，打造時隨機一款 */
