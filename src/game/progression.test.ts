@@ -226,7 +226,7 @@ describe('progression', () => {
     let state = createInitialState()
     state = {
       ...state,
-      ore: bn(60_000),
+      ore: bn(700_000),
       automations: state.automations.filter((a) => a.kind !== 'autoFacility'),
     }
     state = buyResearch(state, 'auto-facility')
