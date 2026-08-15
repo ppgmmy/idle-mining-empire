@@ -144,26 +144,26 @@ describe('progression', () => {
 
   it('automation research spends ore and unlocks switches', () => {
     let state = createInitialState()
-    state = { ...state, ore: bn(200_000) }
+    state = { ...state, ore: bn(3_000_000) }
 
     state = buyResearch(state, 'auto-miner')
     expect(state.researchLevels['auto-miner']).toBe(1)
-    expect(state.ore.eq(bn(192_000))).toBe(true)
+    expect(state.ore.eq(bn(2_920_000))).toBe(true)
 
     state = buyResearch(state, 'auto-buy-drill')
     expect(state.researchLevels['auto-buy-drill']).toBe(1)
-    expect(state.ore.eq(bn(167_000))).toBe(true)
+    expect(state.ore.eq(bn(2_670_000))).toBe(true)
 
     state = buyResearch(state, 'auto-facility')
     expect(state.researchLevels['auto-facility']).toBe(1)
-    expect(state.ore.eq(bn(117_000))).toBe(true)
+    expect(state.ore.eq(bn(2_070_000))).toBe(true)
     expect(
       state.automations.find((a) => a.kind === 'autoFacility')?.enabled,
     ).toBe(true)
 
     state = buyResearch(state, 'auto-rebirth')
     expect(state.researchLevels['auto-rebirth']).toBe(1)
-    expect(state.ore.eq(bn(37_000))).toBe(true)
+    expect(state.ore.eq(bn(870_000))).toBe(true)
     // maxLevel 1：再買無效
     const oreBefore = state.ore
     state = buyResearch(state, 'auto-rebirth')
