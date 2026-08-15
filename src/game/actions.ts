@@ -9,6 +9,7 @@ import {
 } from './endgame'
 import {
   canResonateInto,
+  listResonateFodder,
   lockedAffixIds,
   maxAffixLocks,
   rollAffixesWithLocks,
@@ -61,6 +62,7 @@ import {
   GEAR_CRAFT_STARDUST,
   upgradeAffixesOnRarityUp,
   getAffixMult,
+  gearItemPower,
   stageMaxHp,
   stageVeinName,
   type RebirthPayout,
@@ -423,6 +425,32 @@ export function unequipGear(state: GameState, gearId: string): GameState {
   return { ...state, equipped }
 }
 
+/** 各槽穿上庫存中戰力最高嘅件 */
+export function equipBestGear(state: GameState): GameState {
+  let equipped = { ...state.equipped }
+  let changed = false
+  for (const slot of GEAR_SLOTS) {
+    const candidates = state.gear.filter((g) => g.slot === slot)
+    if (candidates.length === 0) continue
+    let best = candidates[0]!
+    let bestPower = gearItemPower(best)
+    for (let i = 1; i < candidates.length; i++) {
+      const g = candidates[i]!
+      const p = gearItemPower(g)
+      if (p > bestPower) {
+        best = g
+        bestPower = p
+      }
+    }
+    if (equipped[slot] !== best.id) {
+      equipped = { ...equipped, [slot]: best.id }
+      changed = true
+    }
+  }
+  if (!changed) return state
+  return { ...state, equipped }
+}
+
 export function dropGear(state: GameState, gearId: string): GameState {
   const item = state.gear.find((g) => g.id === gearId)
   if (!item) return state
@@ -573,6 +601,19 @@ export function resonateGear(
       .map((g) => (g.id === targetId ? nextTarget : g)),
   }
   next = pushFloater(next, `裝備共鳴 +${level} · ${target.name}`)
+  return next
+}
+
+/** 一次注入全部合格餵料 */
+export function resonateAllFodder(
+  state: GameState,
+  targetId: string,
+): GameState {
+  let next = state
+  const fodderIds = listResonateFodder(next, targetId).map((g) => g.id)
+  for (const fid of fodderIds) {
+    next = resonateGear(next, targetId, fid)
+  }
   return next
 }
 

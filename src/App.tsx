@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { LeaderboardPanel } from './components/LeaderboardPanel'
 import { GearPortrait, ornamentTier } from './components/GearPortrait'
 import { MineCanvas } from './components/MineCanvas'
@@ -16,19 +16,28 @@ import {
   expeditionEchoReward,
   expeditionUnlocked,
   prestigeScore,
+  rebirthSoftWallMult,
   resonatorMult,
   resonatorUnlocked,
+  softWallRemaining,
 } from './game/endgame'
 import {
   assignGearSet,
   describeSetStatus,
+  equippedSetCounts,
   GEAR_SETS,
+  GEAR_SET_IDS,
   listResonateFodder,
   lockedAffixIds,
   maxAffixLocks,
   pieceAffixBoost,
   resonanceLevel,
 } from './game/gearLoop'
+import {
+  getFeatureMeta,
+  getLastEnabledFeature,
+  isFeatureEnabled,
+} from './data/featureFlags'
 import {
   calcRebirthPayout,
   canCraftGear,
@@ -51,6 +60,7 @@ import {
   gearItemPower,
   gearPowerDeltaPct,
   getActiveChallenge,
+  getAffixMult,
   getClickGain,
   bossCrystalReward,
   bossStardustReward,
@@ -86,6 +96,7 @@ import {
   RARITY_ORDER,
   rarityTierNumber,
   SLOT_META,
+  type AffixId,
   type GearItem,
   type GearSlot,
 } from './game/types'
@@ -95,13 +106,41 @@ import './App.css'
 export default function App() {
   const game = useGame()
   const [pulse, setPulse] = useState(0)
-  const [buyMult, setBuyMult] = useState<1 | 10 | 'max'>(1)
+  const [buyMult, setBuyMult] = useState<1 | 10 | 'max'>(() => {
+    if (!isFeatureEnabled('persist-buy-mult')) return 1
+    try {
+      const raw = localStorage.getItem('ime-buy-mult')
+      if (raw === '10') return 10
+      if (raw === 'max') return 'max'
+    } catch {
+      /* ignore */
+    }
+    return 1
+  })
   const [upgradeSection, setUpgradeSection] = useState<'base' | 'facility'>('base')
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
   const [challengeLogOpen, setChallengeLogOpen] = useState(false)
   const [gearFilter, setGearFilter] = useState<GearSlot | null>(null)
   const [craftReveal, setCraftReveal] = useState<GearItem | null>(null)
   const { state } = game
+
+  useEffect(() => {
+    if (!isFeatureEnabled('persist-buy-mult')) return
+    try {
+      localStorage.setItem('ime-buy-mult', String(buyMult))
+    } catch {
+      /* ignore */
+    }
+  }, [buyMult])
+
+  const lastOpt = isFeatureEnabled('daily-opt-banner')
+    ? getLastEnabledFeature()
+    : null
+  const lastOptMeta = lastOpt?.id ? getFeatureMeta(lastOpt.id) : null
+  const setCounts = isFeatureEnabled('set-bonus-panel')
+    ? equippedSetCounts(state)
+    : null
+  const wallLeft = softWallRemaining(state)
   const challengeOffers = listChallengeOffers(state)
   const activeChallenge = getActiveChallenge(state)
   const challengeProgress = activeChallenge
@@ -137,6 +176,15 @@ export default function App() {
     <div className="app-shell">
       <div className="top-zone">
         <ResourceBar state={state} />
+        {lastOpt?.id && lastOpt.title ? (
+          <div className="daily-opt-banner" role="status">
+            <strong>今日優化</strong>
+            <span>
+              {lastOpt.title}
+              {lastOptMeta?.description ? ` · ${lastOptMeta.description}` : ''}
+            </span>
+          </div>
+        ) : null}
         {activeChallenge ? (
           <div
             className="challenge-progress"
@@ -614,6 +662,54 @@ export default function App() {
               {state.gear.length}/{gearCapacity(state)}
             </p>
             <p className="hint gear-set-status">{describeSetStatus(state)}</p>
+            {isFeatureEnabled('equip-best-button') ? (
+              <div className="row-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={game.equipBestGear}
+                >
+                  一鍵穿最強
+                </button>
+              </div>
+            ) : null}
+            {isFeatureEnabled('set-bonus-panel') && setCounts ? (
+              <div className="set-bonus-panel">
+                <h3>套裝加成</h3>
+                <ul>
+                  {GEAR_SET_IDS.map((id) => {
+                    const n = setCounts[id]
+                    const def = GEAR_SETS[id]
+                    const tier =
+                      n >= 7 ? '7件 ×1.35+全局' : n >= 4 ? '4件 ×1.18' : n >= 2 ? '2件 ×1.08' : '未啟動'
+                    return (
+                      <li key={id}>
+                        <strong>{def.name}</strong>（{def.blurb}）· {n}/7 · {tier}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ) : null}
+            {isFeatureEnabled('affix-totals-panel') ? (
+              <div className="affix-totals-panel">
+                <h3>詞條總覽</h3>
+                <ul>
+                  {(
+                    [
+                      ['clickMult', '點擊'],
+                      ['idleRate', '閒置'],
+                      ['minePower', '開採'],
+                      ['offlineBonus', '離線'],
+                    ] as Array<[AffixId, string]>
+                  ).map(([id, label]) => (
+                    <li key={id}>
+                      {label} · {formatAffixMult(getAffixMult(state, id).toNumber() - 1)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <div className="gear-doll" aria-label="裝備槽位">
               {GEAR_SLOTS.map((slot) => {
                 const eqId = state.equipped[slot]
@@ -987,6 +1083,16 @@ export default function App() {
                                 type="button"
                                 className="secondary-btn"
                                 onClick={() => {
+                                  if (
+                                    isFeatureEnabled('resonance-batch-feed') &&
+                                    fodder.length > 1
+                                  ) {
+                                    const ok = window.confirm(
+                                      `一次注入 ${fodder.length} 件餵料？\n會消耗全部合格未穿戴件（不退星塵）。`,
+                                    )
+                                    if (ok) game.resonateAllFodder(item.id)
+                                    return
+                                  }
                                   const f = fodder[0]!
                                   const ok = window.confirm(
                                     `將「${f.name}」注入共鳴？\n會消耗該件（不退星塵），目標共鳴+1。`,
@@ -994,7 +1100,10 @@ export default function App() {
                                   if (ok) game.resonateGear(item.id, f.id)
                                 }}
                               >
-                                餵料共鳴 · {fodder.length} 可餵
+                                {isFeatureEnabled('resonance-batch-feed') &&
+                                fodder.length > 1
+                                  ? `批量共鳴 · ${fodder.length}`
+                                  : `餵料共鳴 · ${fodder.length} 可餵`}
                               </button>
                             ) : null}
                             <button
@@ -1102,6 +1211,24 @@ export default function App() {
             {describeSoftWall(state) ? (
               <p className="soft-wall-hint">{describeSoftWall(state)}</p>
             ) : null}
+            {isFeatureEnabled('soft-wall-meter') && wallLeft > 0 ? (
+              <div className="soft-wall-meter" role="status">
+                <div className="soft-wall-meter-head">
+                  <span>進化軟牆</span>
+                  <span>
+                    剩 {wallLeft} 轉 · ×{formatBN(rebirthSoftWallMult(state))}
+                  </span>
+                </div>
+                <div className="soft-wall-meter-track">
+                  <div
+                    className="soft-wall-meter-fill"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, ((10 - wallLeft) / 10) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="rebirth-actions">
               {(() => {
                 const payout = calcRebirthPayout(state)
@@ -1191,7 +1318,17 @@ export default function App() {
                   const active = state.activeChallengeId === c.id
                   const pct = active ? Math.floor(challengeProgress * 100) : 0
                   return (
-                    <div key={c.id} className="challenge-offer-row">
+                    <div
+                      key={c.id}
+                      className={[
+                        'challenge-offer-row',
+                        isFeatureEnabled('challenge-reward-highlight')
+                          ? 'challenge-offer-highlight'
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
                       <ActionCard
                         compact
                         title={c.name}
@@ -1212,6 +1349,13 @@ export default function App() {
                         disabled={!canStart}
                         onClick={() => game.startChallenge(c.id)}
                       />
+                      {isFeatureEnabled('challenge-reward-highlight') &&
+                      unlocked &&
+                      c.reward.echo != null ? (
+                        <p className="challenge-reward-echo">
+                          回響+{String(c.reward.echo)} · {c.reward.label}
+                        </p>
+                      ) : null}
                       {active ? (
                         <button
                           type="button"

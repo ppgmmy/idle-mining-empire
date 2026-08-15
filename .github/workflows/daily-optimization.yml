@@ -1,0 +1,99 @@
+# 星際礦場帝國：每日自動優化（香港 16:00）
+#
+# 觸發：
+# 1. Vercel Cron 08:00 UTC（≈ HKT 16:00）
+# 2. Vercel Cron 09:00 UTC（≈ HKT 17:00 備援）
+# 3. GitHub schedule 錯峰：08:07 / 08:23 / 08:41 UTC
+# 4. workflow_dispatch
+#
+# 從未啟用 backlog 隨機抽一項（HKT 日期種子，同日冪等）
+# 終止日：2027-12-31
+
+name: Daily Optimization
+
+on:
+  schedule:
+    - cron: '7 8 * * *'
+    - cron: '23 8 * * *'
+    - cron: '41 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-optimization
+  cancel-in-progress: false
+
+jobs:
+  enable-random-feature:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check end date (until 2027-12-31, HKT)
+        id: gate
+        run: |
+          TODAY=$(TZ=Asia/Hong_Kong date +%F)
+          END=2027-12-31
+          echo "today=$TODAY"
+          echo "end=$END"
+          if [[ "$TODAY" > "$END" ]]; then
+            echo "Past end date — skipping."
+            echo "continue=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "continue=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.continue == 'true'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        if: steps.gate.outputs.continue == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run daily optimization script
+        if: steps.gate.outputs.continue == 'true'
+        id: opt
+        run: |
+          node scripts/daily-optimization/run.mjs
+          if [[ -f .daily-opt-skip ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No new feature to enable."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            if [[ -f .daily-opt-result.json ]]; then
+              TITLE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.daily-opt-result.json','utf8')).title)")
+              ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.daily-opt-result.json','utf8')).id)")
+              echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+              echo "id=$ID" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Commit and push
+        if: steps.gate.outputs.continue == 'true' && steps.opt.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -f .daily-opt-skip .daily-opt-result.json
+
+          git add src/data/enabledDailyFeatures.json optimization_history.json
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+
+          TITLE="${{ steps.opt.outputs.title }}"
+          ID="${{ steps.opt.outputs.id }}"
+          git commit -m "$(cat <<EOF
+          feat(daily): enable ${ID} — ${TITLE}
+
+          Automated daily optimization (feature flag).
+          EOF
+          )"
+
+          git push origin HEAD:${{ github.ref_name }}

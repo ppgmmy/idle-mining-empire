@@ -10,7 +10,9 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "daily-opt": "node scripts/daily-optimization/run.mjs",
+    "daily-opt:dry": "node scripts/daily-optimization/run.mjs --dry-run"
   },
   "dependencies": {
     "break_infinity.js": "^2.2.0",

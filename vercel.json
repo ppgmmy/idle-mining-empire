@@ -4,5 +4,15 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/daily-opt-cron",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/daily-opt-cron",
+      "schedule": "0 9 * * *"
+    }
   ]
 }

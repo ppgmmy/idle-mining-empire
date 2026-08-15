@@ -1,0 +1,24 @@
+---
+description: idle-mining-empire 每日自動優化排程與 backlog 規則
+alwaysApply: true
+---
+
+# 每日自動優化（idle-mining-empire）
+
+當用戶問排程／工作排程，或要追加每日優化功能時：
+
+## 排程（香港時間）
+
+- **Vercel Cron**：`0 8 * * *`（HKT 16:00）、`0 9 * * *`（HKT 17:00 備援）→ `/api/daily-opt-cron`
+- **GitHub Actions** `Daily Optimization`：`7/23/41 8 * * *` UTC（≈ HKT 16:07／16:23／16:41）
+- 腳本：`node scripts/daily-optimization/run.mjs`（`npm run daily-opt`／`daily-opt:dry`）
+- 終止日：2027-12-31；同日冪等（`optimization_history.json`）
+- 選項：從未啟用 backlog **隨機**抽一項（HKT 日期種子）
+
+## Backlog 規則
+
+- 檔案：`src/data/dailyFeatureBacklog.ts`
+- 支柱輪替追加：`convenience` → `playability_polish` → `playability_new`
+- 已上線 id **勿改名／勿改序**；只可末尾 append
+- 功能須預先實作並用 `isFeatureEnabled('id')` 包住
+- Vercel 需 `CRON_SECRET` + `GH_WORKFLOW_TOKEN`（詳見 `docs/daily-optimization.md`）

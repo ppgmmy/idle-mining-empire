@@ -25,3 +25,5 @@ dist-ssr
 
 .vercel
 .data
+.daily-opt-skip
+.daily-opt-result.json

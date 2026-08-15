@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { formatBN } from '../game/bigNumber'
+import { isFeatureEnabled } from '../data/featureFlags'
 import { echoMult } from '../game/endgame'
 import type { GameState } from '../game/types'
+import { OFFLINE_CAP_HOURS } from '../game/types'
 import {
   crystalInterestRate,
   evolutionMult,
@@ -31,7 +33,11 @@ export function ResourceBar({ state }: Props) {
           kind="ore"
           label="礦石"
           value={formatBN(state.ore)}
-          hint={`${formatBN(idle)}/s`}
+          hint={
+            isFeatureEnabled('offline-cap-hint')
+              ? `${formatBN(idle)}/s · 離線≤${OFFLINE_CAP_HOURS}h`
+              : `${formatBN(idle)}/s`
+          }
         />
         <Resource
           kind="crystal"

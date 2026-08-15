@@ -70,6 +70,92 @@ textarea {
   padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
 }
 
+.daily-opt-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(154, 215, 255, 0.35);
+  background: rgba(154, 215, 255, 0.08);
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.daily-opt-banner strong {
+  color: #9ad7ff;
+  font-size: 0.72rem;
+}
+
+.set-bonus-panel,
+.affix-totals-panel {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(87, 199, 178, 0.28);
+  background: rgba(87, 199, 178, 0.06);
+  margin-bottom: 8px;
+}
+
+.set-bonus-panel h3,
+.affix-totals-panel h3 {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.set-bonus-panel ul,
+.affix-totals-panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  display: grid;
+  gap: 3px;
+}
+
+.soft-wall-meter {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.soft-wall-meter-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: #f0b429;
+}
+
+.soft-wall-meter-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  border: 1px solid rgba(240, 180, 41, 0.28);
+}
+
+.soft-wall-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c9892e, #f0b429);
+}
+
+.challenge-offer-highlight {
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(240, 180, 41, 0.28);
+  background: rgba(240, 180, 41, 0.05);
+}
+
+.challenge-reward-echo {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #9ad7ff;
+}
+
 .resource-bar {
   display: grid;
   gap: 10px;

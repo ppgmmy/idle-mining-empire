@@ -19,6 +19,7 @@ import {
   dropGear,
   equipGear,
   unequipGear,
+  equipBestGear,
   sellUnequippedGear,
   mineClick,
   strikeStage,
@@ -26,6 +27,7 @@ import {
   breakthroughGear,
   toggleAffixLock,
   resonateGear,
+  resonateAllFodder,
   runExpedition,
   spawnBoss,
   startChallenge,
@@ -262,6 +264,7 @@ export function useGame() {
     },
     equipGear: (gearId: string) => commit((s) => equipGear(s, gearId)),
     unequipGear: (gearId: string) => commit((s) => unequipGear(s, gearId)),
+    equipBestGear: () => commit((s) => equipBestGear(s)),
     sellUnequippedGear: (slot?: GearSlot) =>
       commit((s) => sellUnequippedGear(s, slot)),
     dropGear: (gearId: string) => commit((s) => dropGear(s, gearId)),
@@ -272,6 +275,8 @@ export function useGame() {
       commit((s) => toggleAffixLock(s, gearId, affixId)),
     resonateGear: (targetId: string, fodderId: string) =>
       commit((s) => resonateGear(s, targetId, fodderId)),
+    resonateAllFodder: (targetId: string) =>
+      commit((s) => resonateAllFodder(s, targetId)),
     runExpedition: () => commit((s) => runExpedition(s)),
     rebirth: () => {
       const before = stateRef.current.rebirthCount
