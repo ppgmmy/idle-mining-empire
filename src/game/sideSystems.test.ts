@@ -317,19 +317,18 @@ describe('side systems', () => {
     expect(state.stardust.eq(180)).toBe(true)
   })
 
-  it('craft then sell refunds 90% of craft cost', () => {
+  it('craft then sell does not refund craft crystals as stardust', () => {
     let state = createInitialState()
-    state = { ...state, stardust: bn(1000), gear: [], equipped: {} }
+    state = { ...state, crystals: bn(20_000), stardust: bn(1000), gear: [], equipped: {} }
     state = craftGear(state)
     expect(state.gear).toHaveLength(1)
-    const invested = state.gear[0]!.stardustInvested
-    expect(invested).toBe('200')
+    expect(state.crystals.eq(20_000 - 15_000)).toBe(true)
+    expect(state.gear[0]!.stardustInvested).toBe('0')
     const itemId = state.gear[0]!.id
-    // 卸下先可以賣
     state = unequipGear(state, itemId)
     state = sellUnequippedGear(state)
     expect(state.gear).toHaveLength(0)
-    expect(state.stardust.eq(bn(1000).sub(200).add(180))).toBe(true)
+    expect(state.stardust.eq(1000)).toBe(true)
   })
 
   it('singularity ledger buffs click, idle and offline', () => {
@@ -415,23 +414,23 @@ describe('side systems', () => {
     expect(craftRarityChances(10).length).toBeGreaterThan(rows.length)
   })
 
-  it('crafting gear grants craft XP', () => {
+  it('crafting gear grants craft XP and spends crystals', () => {
     let state = createInitialState()
     state = {
       ...state,
-      stardust: bn(500),
+      crystals: bn(50_000),
       rebirthCount: 20,
       craftLevel: 1,
       craftXp: 0,
     }
     const beforeLevel = state.craftLevel
     const beforeXp = state.craftXp
-    const beforeDust = state.stardust
+    const beforeCrystals = state.crystals
     const cost = craftGearCost(state)
     state = craftGear(state)
     expect(state.gear).toHaveLength(1)
     expect(GEAR_SLOTS).toContain(state.gear[0]!.slot)
-    expect(state.stardust.eq(beforeDust.sub(cost))).toBe(true)
+    expect(state.crystals.eq(beforeCrystals.sub(cost))).toBe(true)
     expect(craftGearCost(state).eq(cost)).toBe(true)
     expect(state.craftLevel > beforeLevel || state.craftXp > beforeXp).toBe(true)
   })

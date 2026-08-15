@@ -59,7 +59,7 @@ import {
   sellGearRefund,
   gearStardustInvested,
   withGearStardustInvested,
-  GEAR_CRAFT_STARDUST,
+  GEAR_CRAFT_CRYSTALS,
   upgradeAffixesOnRarityUp,
   getAffixMult,
   gearItemPower,
@@ -367,7 +367,7 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
     }
     const item = withGearStardustInvested(
       rollGear(slot, ADMIN_CRAFT_LEVEL, { tag: 'admin' }),
-      bn(GEAR_CRAFT_STARDUST),
+      bn(0),
     )
     // 管理裝備強制頂階
     const topItem = {
@@ -382,8 +382,8 @@ export function adminUnlockResearchAndGear(state: GameState): GameState {
   return { ...next, gear, equipped }
 }
 
-/** 打造裝備：固定星塵價（唔跟件數加價） */
-export const CRAFT_GEAR_COST = GEAR_CRAFT_STARDUST
+/** 打造裝備：固定高額晶體價（唔跟件數加價） */
+export const CRAFT_GEAR_COST = GEAR_CRAFT_CRYSTALS
 
 export function craftGearCost(_state?: GameState) {
   return bn(CRAFT_GEAR_COST)
@@ -392,10 +392,11 @@ export function craftGearCost(_state?: GameState) {
 export function craftGear(state: GameState): GameState {
   if (!canCraftGear(state)) return state
   const cost = craftGearCost(state)
-  const paid = spendStardust(state, cost)
+  const paid = spendCrystals(state, cost)
   if (!paid) return state
   const slot = GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)]!
-  const item = withGearStardustInvested(rollGear(slot, paid.craftLevel), cost)
+  // 打造改耗晶體；星塵投資由晉升／重鑄／突破累計
+  const item = withGearStardustInvested(rollGear(slot, paid.craftLevel), bn(0))
   // 該槽未穿戴先自動裝上；已有穿戴則只入庫存
   const equipped = { ...paid.equipped }
   if (!equipped[slot]) equipped[slot] = item.id

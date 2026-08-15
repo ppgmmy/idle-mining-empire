@@ -624,14 +624,18 @@ export function rerollGearCost(item: GearItem): BN {
   return base.mul(bn(2.15).pow(rerolls)).mul(rerollLockCostMult(item)).floor()
 }
 
-/** 打造固定星塵價 */
-export const GEAR_CRAFT_STARDUST = 200
+/** 打造固定晶體價（大幅高於舊星塵價） */
+export const GEAR_CRAFT_CRYSTALS = 15_000
+/** 舊存檔估算用：打造曾計入星塵投資 */
+export const GEAR_CRAFT_STARDUST_LEGACY = 200
+/** @deprecated 用 GEAR_CRAFT_CRYSTALS；保留別名以免外部誤用 */
+export const GEAR_CRAFT_STARDUST = GEAR_CRAFT_STARDUST_LEGACY
 /** 出售退回累計付出嘅比例 */
 export const GEAR_SELL_REFUND_RATE = 0.9
 
-/** 舊存檔無投資紀錄時，按打造價＋歷次晉升／重鑄成本估算 */
+/** 舊存檔無投資紀錄時，按舊打造星塵價＋歷次晉升／重鑄成本估算 */
 function estimateLegacyGearStardustInvested(item: GearItem): BN {
-  let total = bn(GEAR_CRAFT_STARDUST)
+  let total = bn(GEAR_CRAFT_STARDUST_LEGACY)
   const end = Math.max(0, rarityIndex(item.rarity))
   const rerolls = Math.max(0, item.rerolls ?? 0)
   let rIdx = Math.max(0, end - rerolls)
@@ -648,11 +652,10 @@ function estimateLegacyGearStardustInvested(item: GearItem): BN {
   return total
 }
 
-/** 呢件裝備累計付出星塵 */
+/** 呢件裝備累計付出星塵（晉升／重鑄／突破；打造已改晶體） */
 export function gearStardustInvested(item: GearItem): BN {
   if (item.stardustInvested != null && item.stardustInvested !== '') {
-    const tracked = parseBN(item.stardustInvested)
-    if (tracked.gt(0)) return tracked
+    return parseBN(item.stardustInvested)
   }
   return estimateLegacyGearStardustInvested(item)
 }

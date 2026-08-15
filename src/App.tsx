@@ -681,7 +681,7 @@ export default function App() {
           <section className="panel gear-hub">
             <h2>裝備</h2>
             <p className="lede">
-              打造→晉升→創世突破→鎖詞重鑄→餵料共鳴→套裝 ·{' '}
+              打造（晶體）→晉升／重鑄（星塵）→突破／共鳴／套裝 ·{' '}
               {state.gear.length}/{gearCapacity(state)}
             </p>
             <p className="hint gear-set-status">{describeSetStatus(state)}</p>
@@ -821,7 +821,7 @@ export default function App() {
             </p>
             {(() => {
               const cost = craftGearCost(state)
-              const canAfford = state.stardust.gte(cost)
+              const canAfford = state.crystals.gte(cost)
               const canCraft = canCraftGear(state)
               return (
                 <div className="gear-craft-block">
@@ -837,12 +837,12 @@ export default function App() {
                     打造裝備
                   </button>
                   <p className="craft-price-line">
-                    {formatBN(cost)} 星塵
+                    {formatBN(cost)} 晶體
                     {!canCraft
                       ? ' · 庫存已滿'
                       : canAfford
                         ? ''
-                        : ` · 尚欠 ${formatBN(cost.sub(state.stardust))}`}
+                        : ` · 尚欠 ${formatBN(cost.sub(state.crystals))}`}
                   </p>
                 </div>
               )
