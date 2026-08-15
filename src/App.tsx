@@ -507,7 +507,7 @@ export default function App() {
             <h2>研究</h2>
             <p className="lede">
               產量研究耗晶體 · 自動化解鎖耗礦石 · 奇點帳本另耗星塵，並同時加點擊／每秒自動／離線 ·
-              每級加幅×1.08 · 與升級／裝備互乘
+              每級固定 ×1.08 · 與升級／裝備互乘
             </p>
 
             <div className="research-scroll">

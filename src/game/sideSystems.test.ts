@@ -373,16 +373,23 @@ describe('side systems', () => {
         },
       ],
     }
-    // Π(1+per×GROWTH^k) for k=0..1 × (1+0.2) × (1+0.5)
+    // 每級固定 ×(1+per)：2 級 = (1+per)^2 × 挑戰 × 裝備
     const expected = researchNodeMult(node, 2, 'clickMult')
       .mul(1.2)
       .mul(1.5)
     expect(
       getAffixMult(state, 'clickMult').sub(expected).abs().lt(1e-9),
     ).toBe(true)
+    expect(RESEARCH_LEVEL_GAIN_GROWTH).toBe(1)
     expect(
       researchNodeMult(node, 2, 'clickMult')
-        .sub(bn(1 + per).mul(1 + per * RESEARCH_LEVEL_GAIN_GROWTH))
+        .sub(bn(1 + per).pow(2))
+        .abs()
+        .lt(1e-9),
+    ).toBe(true)
+    expect(
+      researchNodeMult(node, 5, 'clickMult')
+        .sub(bn(1.08).pow(5))
         .abs()
         .lt(1e-9),
     ).toBe(true)

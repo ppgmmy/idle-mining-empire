@@ -1041,10 +1041,10 @@ const RESEARCH_AFFIX_ORDER: AffixId[] = [
   'offlineBonus',
 ]
 
-/** 研究每級加幅成長：第 n 級加幅 = 底值 × 1.08^(n-1) */
-export const RESEARCH_LEVEL_GAIN_GROWTH = 1.08
+/** 研究每級加幅成長；1＝每級固定加幅（奇點帳本每級固定 ×1.08） */
+export const RESEARCH_LEVEL_GAIN_GROWTH = 1
 
-/** 顯示用：該研究目前等級下嘅單一能力（每級互乘，加幅跟 RESEARCH_LEVEL_GAIN_GROWTH） */
+/** 顯示用：該研究目前等級下嘅單一能力（每級互乘） */
 export function formatResearchEffects(
   node: ResearchNode,
   level: number,
@@ -1055,7 +1055,11 @@ export function formatResearchEffects(
     const per = node.effectPerLevel[id] ?? 0
     const short = AFFIX_META[id].short
     if (level <= 0) {
-      return `${short}×${(1 + per).toFixed(3)}起/級(×${RESEARCH_LEVEL_GAIN_GROWTH})`
+      const perLevel = 1 + per
+      if (RESEARCH_LEVEL_GAIN_GROWTH === 1) {
+        return `${short}×${perLevel.toFixed(2)}/級`
+      }
+      return `${short}×${perLevel.toFixed(3)}起/級(×${RESEARCH_LEVEL_GAIN_GROWTH})`
     }
     const mult = researchNodeMult(node, level, id)
     const n = mult.toNumber()
@@ -1077,6 +1081,7 @@ export function formatResearchEffects(
 /** 第 levelIndex（0-based）級嘅加幅：per × GROWTH^levelIndex（BN） */
 export function researchLevelGain(per: number, levelIndex: number): BN {
   if (per <= 0) return ZERO
+  if (RESEARCH_LEVEL_GAIN_GROWTH === 1) return bn(per)
   return bn(per).mul(
     bn(RESEARCH_LEVEL_GAIN_GROWTH).pow(Math.max(0, levelIndex)),
   )
@@ -1084,7 +1089,8 @@ export function researchLevelGain(per: number, levelIndex: number): BN {
 
 /**
  * 單一研究節點對某詞條的互乘倍率（BN）：
- * Π_{k=0..L-1} (1 + per × GROWTH^k)
+ * GROWTH=1 時：每級固定 ×(1+per)，即 (1+per)^L
+ * 否則：Π_{k=0..L-1} (1 + per × GROWTH^k)
  */
 export function researchNodeMult(
   node: ResearchNode,
@@ -1093,8 +1099,11 @@ export function researchNodeMult(
 ): BN {
   const per = node.effectPerLevel[id] ?? 0
   if (per <= 0 || level <= 0) return ONE
-  let product = ONE
   const lv = Math.floor(level)
+  if (RESEARCH_LEVEL_GAIN_GROWTH === 1) {
+    return bn(1 + per).pow(lv)
+  }
+  let product = ONE
   for (let k = 0; k < lv; k++) {
     product = product.mul(ONE.add(researchLevelGain(per, k)))
   }
