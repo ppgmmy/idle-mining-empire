@@ -27,3 +27,5 @@ dist-ssr
 .data
 .daily-opt-skip
 .daily-opt-result.json
+
+tmp-facility-debug.mjs
