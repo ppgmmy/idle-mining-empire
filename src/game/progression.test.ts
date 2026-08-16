@@ -75,11 +75,11 @@ describe('progression', () => {
     const beforeCrystal = state.crystals
     const beforeDust = state.stardust
     state = doRebirth(state)
-    // 5% crystal + base gain; 3% stardust + 1 dust (from 4th rebirth)
-    expect(state.crystals.gte(beforeCrystal.add(beforeCrystal.mul(0.05).floor()))).toBe(
+    // 2% crystal + base gain; 1% stardust + 1 dust (from 4th rebirth)
+    expect(state.crystals.gte(beforeCrystal.add(beforeCrystal.mul(0.02).floor()))).toBe(
       true,
     )
-    expect(state.stardust.gte(beforeDust.add(beforeDust.mul(0.03).floor()).add(1))).toBe(
+    expect(state.stardust.gte(beforeDust.add(beforeDust.mul(0.01).floor()).add(1))).toBe(
       true,
     )
   })

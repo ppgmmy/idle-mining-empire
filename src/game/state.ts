@@ -169,8 +169,8 @@ export function challengeReward(
     const clickN = click.toNumber()
     return {
       label: Number.isFinite(clickN)
-        ? `永久點擊+${Math.round(clickN * 1000) / 10}% · 回響倍數+${echoGain}`
-        : `永久點擊×${formatBN(ONE.add(click))} · 回響倍數+${echoGain}`,
+        ? `永久點擊+${Math.round(clickN * 1000) / 10}% · 遠征倍數↑+${echoGain}`
+        : `永久點擊×${formatBN(ONE.add(click))} · 遠征倍數↑+${echoGain}`,
       affix: {
         clickMult: Number.isFinite(clickN)
           ? Number(clickN.toFixed(4))
@@ -184,8 +184,8 @@ export function challengeReward(
     const idleN = idle.toNumber()
     return {
       label: Number.isFinite(idleN)
-        ? `永久閒置+${Math.round(idleN * 1000) / 10}% · 回響倍數+${echoGain}`
-        : `永久閒置×${formatBN(ONE.add(idle))} · 回響倍數+${echoGain}`,
+        ? `永久閒置+${Math.round(idleN * 1000) / 10}% · 遠征倍數↑+${echoGain}`
+        : `永久閒置×${formatBN(ONE.add(idle))} · 遠征倍數↑+${echoGain}`,
       affix: {
         idleRate: Number.isFinite(idleN)
           ? Number(idleN.toFixed(4))
@@ -198,8 +198,8 @@ export function challengeReward(
   const offlineN = offline.toNumber()
   return {
     label: Number.isFinite(offlineN)
-      ? `永久離線+${Math.round(offlineN * 1000) / 10}% · 回響倍數+${echoGain}`
-      : `永久離線×${formatBN(ONE.add(offline))} · 回響倍數+${echoGain}`,
+      ? `永久離線+${Math.round(offlineN * 1000) / 10}% · 遠征倍數↑+${echoGain}`
+      : `永久離線×${formatBN(ONE.add(offline))} · 遠征倍數↑+${echoGain}`,
     affix: {
       offlineBonus: Number.isFinite(offlineN)
         ? Number(offlineN.toFixed(4))
@@ -544,7 +544,7 @@ const GEAR_SUFFIXES = [
   '餘燼',
   '星痕',
   '礦紋',
-  '回響',
+  '遠倍',
   '斷層',
   '流光',
   '幽光',
@@ -1204,19 +1204,19 @@ export function clearedChallengeBonus(
 }
 
 /** 每次轉生：持有晶體／星塵收息，鼓勵儲蓄 */
-export const CRYSTAL_INTEREST_RATE = 0.05
-export const STARDUST_INTEREST_RATE = 0.03
+export const CRYSTAL_INTEREST_RATE = 0.02
+export const STARDUST_INTEREST_RATE = 0.01
 
 export function crystalInterestRate(state: GameState): BN {
-  return bn(CRYSTAL_INTEREST_RATE)
-    .add(clearedChallengeBonus(state, 'crystalInterest'))
-    .mul(evolutionMult(state))
+  return bn(CRYSTAL_INTEREST_RATE).add(
+    clearedChallengeBonus(state, 'crystalInterest'),
+  )
 }
 
 export function stardustInterestRate(state: GameState): BN {
-  return bn(STARDUST_INTEREST_RATE)
-    .add(clearedChallengeBonus(state, 'stardustInterest'))
-    .mul(evolutionMult(state))
+  return bn(STARDUST_INTEREST_RATE).add(
+    clearedChallengeBonus(state, 'stardustInterest'),
+  )
 }
 
 export function effectiveAutomationLines(state: GameState): number {
@@ -1270,9 +1270,44 @@ export function getAffixMult(state: GameState, id: AffixId): BN {
     .mul(setBonusMult(state, id))
 }
 
-/** 回響 × 共鳴：只喺產量公式套一次，避免多次 getAffixMult 重疊 */
+/** 遠征倍數 × 共鳴：只喺產量公式套一次，避免多次 getAffixMult 重疊 */
 export function endgameYieldMult(state: GameState): BN {
   return echoMult(state).mul(resonatorMult(state))
+}
+
+export type YieldEndgameSnap = {
+  evolution: BN
+  expedition: BN
+  resonator: BN
+  total: BN
+}
+
+/** 終局產量乘區：進化 × 遠征倍數 × 共鳴 */
+export function yieldEndgameSnap(state: GameState): YieldEndgameSnap {
+  const evolution = evolutionMult(state)
+  const expedition = echoMult(state)
+  const resonator = resonatorMult(state)
+  return {
+    evolution,
+    expedition,
+    resonator,
+    total: evolution.mul(expedition).mul(resonator),
+  }
+}
+
+/** 若而家進化一階後嘅終局乘區預覽（遠征倍數不變） */
+export function yieldEndgameSnapAfterEvolve(state: GameState): YieldEndgameSnap {
+  const nextEvo = (state.evolutionCount ?? 0) + 1
+  const evolution = nextEvolutionPower(state)
+  const expedition = echoMult(state)
+  const resonator =
+    nextEvo < 2 ? ONE : bn(1.12).pow(nextEvo - 1)
+  return {
+    evolution,
+    expedition,
+    resonator,
+    total: evolution.mul(expedition).mul(resonator),
+  }
 }
 
 /** 兼容舊測試／顯示：等價於倍率 − 1（小數範圍） */

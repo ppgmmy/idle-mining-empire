@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { formatBN } from '../game/bigNumber'
 import { isFeatureEnabled } from '../data/featureFlags'
-import { echoMult } from '../game/endgame'
+import { formatExpeditionMult } from '../game/endgame'
 import type { GameState } from '../game/types'
 import { OFFLINE_CAP_HOURS } from '../game/types'
 import {
@@ -60,7 +60,9 @@ export function ResourceBar({ state }: Props) {
                 {showEchoMult ? (
                   <>
                     {(state.evolutionCount ?? 0) > 0 ? <br /> : null}
-                    回響×{formatBN(echoMult(state))}
+                    遠征倍數
+                    <br />
+                    {formatExpeditionMult(state)}
                   </>
                 ) : null}
               </>

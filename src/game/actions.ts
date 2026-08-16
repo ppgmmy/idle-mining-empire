@@ -40,6 +40,7 @@ import {
   ensureAutomations,
   evolutionMult,
   nextEvolutionPower,
+  yieldEndgameSnap,
   facilityCost,
   facilityLevel,
   FACILITIES,
@@ -623,7 +624,7 @@ export function resonateAllFodder(
   return next
 }
 
-/** 遠征到期：入帳回響倍數並推進層數 */
+/** 遠征到期：入帳遠征倍數並推進層數 */
 export function resolveExpeditionIfDue(
   state: GameState,
   now = Date.now(),
@@ -639,7 +640,7 @@ export function resolveExpeditionIfDue(
   }
   next = pushFloater(
     next,
-    `遠征完成 · 第 ${floor + 1} 層 · 回響倍數+${formatBN(echoGain)}`,
+    `遠征完成 · 第 ${floor + 1} 層 · 遠征倍數↑+${formatBN(echoGain)}`,
   )
   return next
 }
@@ -701,7 +702,7 @@ export function doRebirth(state: GameState): GameState {
   }
 }
 
-/** 進化：重置進度／研究／晶體／挑戰；保留星塵／裝備／打造／回響／Boss遠征 */
+/** 進化：重置進度／研究／晶體／挑戰；保留星塵／裝備／打造／遠征倍數／Boss遠征 */
 export function doEvolve(state: GameState): GameState {
   if (!canEvolve(state)) return state
   const nextEvo = (state.evolutionCount ?? 0) + 1
@@ -714,11 +715,11 @@ export function doEvolve(state: GameState): GameState {
     equipped: state.equipped,
     craftLevel: state.craftLevel,
     craftXp: state.craftXp,
-    // 回響倍數、遠征層數、進行中遠征計時：進化不重置
+    // 遠征倍數、遠征層數、進行中遠征計時：進化不重置
     echo: state.echo ?? bn(0),
     expeditionFloor: state.expeditionFloor ?? 0,
     expeditionEndsAt: state.expeditionEndsAt ?? 0,
-    // 挑戰歸零：進化後以裝備為核心重打挑戰線（回響／遠征保留）
+    // 挑戰歸零：進化後以裝備為核心重打挑戰線（遠征倍數／遠征保留）
     challengeCleared: emptyChallengeCleared(),
     challengeRecords: [],
     activeChallengeId: null,
@@ -738,7 +739,8 @@ export function describeEvolveNotice(state: GameState): string {
   const unlocks: string[] = ['軟牆']
   if (evo >= 2) unlocks.push('共鳴核心')
   if (evo >= 3) unlocks.push('Boss遠征')
-  return `進化成功！第 ${evo} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生／挑戰歸零 · 回響／Boss遠征／星塵／裝備已保留 · 解鎖：${unlocks.join('／')}`
+  const snap = yieldEndgameSnap(state)
+  return `進化成功！第 ${evo} 階 · 終局 ×${formatBN(snap.total)}＝進化×${formatBN(snap.evolution)} × 遠征倍數×${formatBN(snap.expedition)} × 共鳴×${formatBN(snap.resonator)} · 轉生／挑戰歸零 · Boss遠征／星塵／裝備已保留 · 解鎖：${unlocks.join('／')}`
 }
 
 export function describeRebirthNotice(

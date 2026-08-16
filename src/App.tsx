@@ -11,7 +11,6 @@ import {
   canBreakthrough,
   canRunExpedition,
   describeSoftWall,
-  echoMult,
   expeditionCost,
   expeditionDurationMs,
   expeditionEchoReward,
@@ -19,6 +18,7 @@ import {
   expeditionReadyToClaim,
   expeditionUnlocked,
   formatExpeditionDuration,
+  formatExpeditionMult,
   prestigeScore,
   rebirthSoftWallMult,
   resonatorMult,
@@ -56,7 +56,6 @@ import {
   evolutionMult,
   evolutionSlice,
   evolutionFactor,
-  nextEvolutionPower,
   FACILITIES,
   facilityCost,
   facilityLevel,
@@ -94,6 +93,8 @@ import {
   ensureGearIdentity,
   gearAccent,
   qualityLabel,
+  yieldEndgameSnap,
+  yieldEndgameSnapAfterEvolve,
 } from './game/state'
 import { canAccessTab } from './game/admin'
 import {
@@ -474,8 +475,8 @@ export default function App() {
                   </span>
                 </div>
                 <p className="hint rebirth-lede">
-                  耗晶體＋星塵派出遠征隊 · 完成後提升產量回響倍數（非貨幣）· 目前 ×
-                  {formatBN(echoMult(state))}
+                  耗晶體＋星塵派出遠征隊 · 完成後提升遠征倍數 · 目前{' '}
+                  {formatExpeditionMult(state)}
                 </p>
                 {(() => {
                   const now = Date.now()
@@ -519,7 +520,7 @@ export default function App() {
                     >
                       {state.activeBoss
                         ? '戰鬥中無法遠征'
-                        : `出發遠征 · ${formatBN(cost.crystals)} 晶體 + ${formatBN(cost.stardust)} 星塵 · ${formatExpeditionDuration(duration)} · 回響倍數+${formatBN(expeditionEchoReward(state))}`}
+                        : `出發遠征 · ${formatBN(cost.crystals)} 晶體 + ${formatBN(cost.stardust)} 星塵 · ${formatExpeditionDuration(duration)} · 遠征倍數↑+${formatBN(expeditionEchoReward(state))}`}
                     </button>
                   )
                 })()}
@@ -1298,19 +1299,27 @@ export default function App() {
             </p>
             {(state.evolutionCount ?? 0) > 0 ? (
               <p className="evolve-status">
-                目前進化第 {state.evolutionCount} 階 · 全局倍率 ×
-                {formatBN(evolutionMult(state))}
+                目前進化第 {state.evolutionCount} 階 · 終局 ×
+                {formatBN(yieldEndgameSnap(state).total)}
+                {' · '}
+                進化 ×{formatBN(evolutionMult(state))}
+                {(state.echo?.gt(0) ?? false)
+                  ? ` · 遠征倍數 ${formatExpeditionMult(state)}`
+                  : ''}
                 {resonatorUnlocked(state)
                   ? ` · 共鳴 ×${formatBN(resonatorMult(state))}`
-                  : ''}
-                {(state.echo?.gt(0) ?? false)
-                  ? ` · 回響 ×${formatBN(echoMult(state))}`
                   : ''}
                 {' · '}
                 效率分 {formatBN(prestigeScore(state))}
               </p>
             ) : (
-              <p className="evolve-status">尚未進化 · 全局倍率 ×1</p>
+              <p className="evolve-status">
+                尚未進化 · 終局 ×
+                {formatBN(yieldEndgameSnap(state).total)}
+                {(state.echo?.gt(0) ?? false)
+                  ? ` · 遠征倍數 ${formatExpeditionMult(state)}`
+                  : ''}
+              </p>
             )}
             {describeSoftWall(state) ? (
               <p className="soft-wall-hint">{describeSoftWall(state)}</p>
@@ -1357,27 +1366,51 @@ export default function App() {
                     : `需 ${EVOLUTION_UNLOCK_REBIRTH} 轉（現 ${state.rebirthCount}）`}
                 </span>
               </div>
-              <ul className="evolve-facts">
-                <li>
-                  倍率：現 ×{formatBN(evolutionMult(state))} → 進化後 ×
-                  {formatBN(nextEvolutionPower(state))}
-                </li>
-                <li>
-                  公式：舊倍率 × (1+轉生/10000)＝×
-                  {formatBN(evolutionFactor(state.rebirthCount))}（今轉 +
-                  {formatBN(evolutionSlice(state.rebirthCount).mul(100))}%）
-                </li>
-                <li>保留：回響倍數、Boss遠征（層數／進行中）、星塵、裝備、打造</li>
-                <li>重置：礦石進度、轉生、研究、晶體、設施、限制挑戰</li>
-                <li>解鎖：軟牆 → 共鳴(2階) → 遠征(3階)</li>
-              </ul>
+              <div className="evolve-formula" role="note">
+                {(() => {
+                  const now = yieldEndgameSnap(state)
+                  const next = yieldEndgameSnapAfterEvolve(state)
+                  const factor = evolutionFactor(state.rebirthCount)
+                  return (
+                    <>
+                      <strong>終局產量公式</strong>
+                      <p className="evolve-formula-eq">
+                        終局 = 進化 × 遠征倍數 × 共鳴
+                      </p>
+                      <ul className="evolve-facts">
+                        <li>
+                          進化：×{formatBN(now.evolution)} → ×
+                          {formatBN(next.evolution)}（今次 ×
+                          {formatBN(factor)}＝1+轉生/10000，今轉 +
+                          {formatBN(evolutionSlice(state.rebirthCount).mul(100))}
+                          %）
+                        </li>
+                        <li>
+                          遠征倍數：×{formatBN(now.expedition)}（挑戰／遠征累積，進化保留）
+                        </li>
+                        <li>
+                          共鳴：×{formatBN(now.resonator)} → ×
+                          {formatBN(next.resonator)}（進化≥2 解鎖，每階 ×1.12）
+                        </li>
+                        <li>
+                          合計：×{formatBN(now.total)} → ×{formatBN(next.total)}
+                        </li>
+                        <li>保留：Boss遠征、星塵、裝備</li>
+                      </ul>
+                      <p className="hint">
+                        實際產量另再 × 轉生倍率 × 研究／裝備／挑戰詞條
+                      </p>
+                    </>
+                  )
+                })()}
+              </div>
               <button
                 type="button"
                 className="secondary-btn evolve-btn"
                 disabled={!canEvolve(state)}
                 onClick={() => {
                   const ok = window.confirm(
-                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度、晶體與限制挑戰（轉生歸零），保留回響倍數、Boss遠征、星塵與裝備。`,
+                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度、晶體與限制挑戰（轉生歸零），保留 Boss遠征、星塵、裝備。`,
                   )
                   if (ok) game.evolve()
                 }}
@@ -1388,7 +1421,7 @@ export default function App() {
             <div className="stack muted-block rebirth-challenges">
               <h3>限制挑戰</h3>
               <p className="hint rebirth-lede">
-                進化後主線 · 獎點擊／閒置／離線＋回響 · 轉生保留／進化歸零挑戰進度（回響永久）
+                進化後主線 · 獎點擊／閒置／離線＋遠征倍數 · 轉生保留／進化歸零挑戰進度（遠征倍數保留）
               </p>
               <div className="rebirth-challenge-list">
                 {challengeOffers.map((c) => {
@@ -1432,7 +1465,7 @@ export default function App() {
                       unlocked &&
                       c.reward.echo != null ? (
                         <p className="challenge-reward-echo">
-                          回響倍數+{String(c.reward.echo)} · {c.reward.label}
+                          遠征倍數↑+{String(c.reward.echo)} · {c.reward.label}
                         </p>
                       ) : null}
                       {active ? (

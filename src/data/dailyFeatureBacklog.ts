@@ -77,7 +77,7 @@ export const DAILY_FEATURE_BACKLOG: DailyFeatureDef[] = [
   {
     id: 'challenge-reward-highlight',
     title: '挑戰獎勵高亮',
-    description: '限制挑戰卡片突出回響與詞條獎勵，方便規劃主線。',
+    description: '限制挑戰卡片突出遠征倍數與詞條獎勵，方便規劃主線。',
     pillar: 'playability_polish',
   },
 ]

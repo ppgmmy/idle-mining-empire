@@ -274,7 +274,7 @@ export type ChallengeReward = {
   stardustInterest?: number
   /** 永久額外自動化產線 */
   automationLines?: number
-  /** 進化回響（進化保留） */
+  /** 遠征倍數點數（挑戰／遠征；進化保留） */
   echo?: number | string
 }
 
@@ -374,7 +374,7 @@ export type GameState = {
   stage: number
   /** 當前關卡礦石 HP */
   stageHp: BN
-  /** 進化回響點數（挑戰／遠征產出；進化保留；只作產量倍數，非消耗貨幣） */
+  /** 遠征倍數點數（挑戰／遠征；進化保留；產量倍數，非貨幣） */
   echo: BN
   /** Boss 遠征層數（進化≥3 解鎖；永久） */
   expeditionFloor: number

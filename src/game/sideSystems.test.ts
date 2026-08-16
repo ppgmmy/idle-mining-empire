@@ -76,8 +76,8 @@ describe('side systems', () => {
         },
       ],
     }
-    expect(crystalInterestRate(state).toNumber()).toBeCloseTo(0.05, 5)
-    expect(stardustInterestRate(state).toNumber()).toBeCloseTo(0.03, 5)
+    expect(crystalInterestRate(state).toNumber()).toBeCloseTo(0.02, 5)
+    expect(stardustInterestRate(state).toNumber()).toBeCloseTo(0.01, 5)
   })
 
   it('challenge goals scale ×4 then steeply after lv10', () => {

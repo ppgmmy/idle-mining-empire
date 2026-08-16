@@ -47,12 +47,16 @@ export function breakthroughAffixFactor(item: GearItem): BN {
   return bn(BREAKTHROUGH_AFFIX_GROWTH).pow(b)
 }
 
-/** 進化回響：挑戰掉落、進化保留；提供獨立全局乘區 */
+/** 挑戰／遠征累積嘅產量倍數：(1.008)^點數；UI 稱「遠征倍數」 */
 export function echoMult(state: GameState): BN {
   const echo = state.echo ?? ZERO
   if (echo.lte(0)) return ONE
-  // 每點回響 +0.8%，用 (1.008)^n 互乘；n 用 BN 避免溢位
   return bn(1.008).pow(echo)
+}
+
+/** UI：遠征倍數（挑戰／遠征累積，進化保留） */
+export function formatExpeditionMult(state: GameState): string {
+  return `×${formatBN(echoMult(state))}`
 }
 
 export function challengeEchoReward(

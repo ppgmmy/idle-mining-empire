@@ -1904,6 +1904,32 @@ textarea {
   word-break: break-word;
 }
 
+.evolve-formula {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border, #3a4a3a) 80%, transparent);
+  background: color-mix(in srgb, var(--panel-bg, #121812) 70%, transparent);
+  border-radius: 8px;
+}
+
+.evolve-formula strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.evolve-formula-eq {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.evolve-formula .evolve-facts {
+  margin-bottom: 6px;
+}
+
 .evolve-btn {
   width: 100%;
   padding: 12px 10px;
