@@ -474,7 +474,7 @@ export default function App() {
                   </span>
                 </div>
                 <p className="hint rebirth-lede">
-                  耗礦石派出遠征隊 · 完成後提升產量回響倍數（非貨幣）· 目前 ×
+                  耗晶體＋星塵派出遠征隊 · 完成後提升產量回響倍數（非貨幣）· 目前 ×
                   {formatBN(echoMult(state))}
                 </p>
                 {(() => {
@@ -482,6 +482,7 @@ export default function App() {
                   const floor = state.expeditionFloor ?? 0
                   const duration = expeditionDurationMs(floor)
                   const endsAt = state.expeditionEndsAt ?? 0
+                  const cost = expeditionCost(state)
                   if (expeditionReadyToClaim(state, now)) {
                     return (
                       <p className="hint">遠征已完成，結算入帳中…</p>
@@ -518,7 +519,7 @@ export default function App() {
                     >
                       {state.activeBoss
                         ? '戰鬥中無法遠征'
-                        : `出發遠征 · ${formatBN(expeditionCost(state))} 礦石 · ${formatExpeditionDuration(duration)} · 回響倍數+${formatBN(expeditionEchoReward(state))}`}
+                        : `出發遠征 · ${formatBN(cost.crystals)} 晶體 + ${formatBN(cost.stardust)} 星塵 · ${formatExpeditionDuration(duration)} · 回響倍數+${formatBN(expeditionEchoReward(state))}`}
                     </button>
                   )
                 })()}

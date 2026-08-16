@@ -644,11 +644,13 @@ export function resolveExpeditionIfDue(
   return next
 }
 
-/** Boss 遠征出發：耗礦石、開始計時（進化≥3） */
+/** Boss 遠征出發：耗晶體＋星塵、開始計時（進化≥3） */
 export function runExpedition(state: GameState, now = Date.now()): GameState {
   if (!expeditionUnlocked(state) || !canRunExpedition(state, now)) return state
   const cost = expeditionCost(state)
-  const paid = spendOre(state, cost)
+  const paidCrystals = spendCrystals(state, cost.crystals)
+  if (!paidCrystals) return state
+  const paid = spendStardust(paidCrystals, cost.stardust)
   if (!paid) return state
   const floor = Math.max(0, state.expeditionFloor ?? 0)
   const duration = expeditionDurationMs(floor)

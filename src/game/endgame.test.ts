@@ -108,13 +108,24 @@ describe('endgame roadmap', () => {
     state = { ...state, evolutionCount: 2, ore: bn(1e9) }
     expect(expeditionUnlocked(state)).toBe(false)
     const t0 = 1_700_000_000_000
-    state = { ...state, evolutionCount: 3, ore: expeditionCost(state).mul(2) }
+    const cost = expeditionCost({ ...state, evolutionCount: 3 })
+    state = {
+      ...state,
+      evolutionCount: 3,
+      crystals: cost.crystals.mul(2),
+      stardust: cost.stardust.mul(2),
+    }
     expect(canRunExpedition(state, t0)).toBe(true)
     expect(expeditionDurationMs(0)).toBe(24 * 3_600_000)
     expect(expeditionDurationMs(1)).toBeGreaterThan(expeditionDurationMs(0))
+    expect(expeditionDurationMs(1) / expeditionDurationMs(0)).toBeCloseTo(1.2, 5)
     const floorBefore = state.expeditionFloor
     const echoBefore = state.echo
+    const beforeC = state.crystals
+    const beforeD = state.stardust
     state = runExpedition(state, t0)
+    expect(state.crystals.eq(beforeC.sub(cost.crystals))).toBe(true)
+    expect(state.stardust.eq(beforeD.sub(cost.stardust))).toBe(true)
     expect(state.expeditionFloor).toBe(floorBefore)
     expect(state.expeditionEndsAt).toBe(t0 + expeditionDurationMs(floorBefore))
     expect(state.echo.eq(echoBefore)).toBe(true)

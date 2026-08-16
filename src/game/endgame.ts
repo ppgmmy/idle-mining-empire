@@ -82,10 +82,10 @@ export function expeditionUnlocked(state: GameState): boolean {
 
 const HOUR_MS = 3_600_000
 
-/** 第 n 層遠征所需時間：首層 24h，之後每層 ×1.5 */
+/** 第 n 層遠征所需時間：首層 24h，之後每層 ×1.2（增幅放緩） */
 export function expeditionDurationMs(floor = 0): number {
   const f = Math.max(0, Math.floor(floor))
-  return Math.floor(24 * HOUR_MS * Math.pow(1.5, f))
+  return Math.floor(24 * HOUR_MS * Math.pow(1.2, f))
 }
 
 export function formatExpeditionDuration(ms: number): string {
@@ -100,9 +100,16 @@ export function formatExpeditionDuration(ms: number): string {
   return `${d} 日 ${rh} 小時`
 }
 
-export function expeditionCost(state: GameState): BN {
+export type ExpeditionCost = { crystals: BN; stardust: BN }
+
+/** 遠征代價：晶體＋星塵；底價高、每層陡升 */
+export function expeditionCost(state: GameState): ExpeditionCost {
   const floor = Math.max(0, state.expeditionFloor ?? 0)
-  return bn(5_000).mul(bn(2.8).pow(floor)).floor()
+  const scale = bn(3.2).pow(floor)
+  return {
+    crystals: bn(80_000).mul(scale).floor(),
+    stardust: bn(12_000).mul(scale).floor(),
+  }
 }
 
 export function expeditionEchoReward(state: GameState): BN {
@@ -129,7 +136,8 @@ export function canRunExpedition(state: GameState, now = Date.now()): boolean {
   if (expeditionInProgress(state, now) || expeditionReadyToClaim(state, now)) {
     return false
   }
-  return state.ore.gte(expeditionCost(state))
+  const cost = expeditionCost(state)
+  return state.crystals.gte(cost.crystals) && state.stardust.gte(cost.stardust)
 }
 
 /** 終局效率分：用來睇長期進度（非消耗貨幣） */
