@@ -1,8 +1,9 @@
 {
   "enabled": [
-    "set-bonus-panel"
+    "set-bonus-panel",
+    "offline-cap-hint"
   ],
-  "updatedAt": "2026-08-15T08:42:46.766Z",
-  "lastFeatureId": "set-bonus-panel",
-  "lastTitle": "套裝加成面板"
+  "updatedAt": "2026-08-16T08:43:23.904Z",
+  "lastFeatureId": "offline-cap-hint",
+  "lastTitle": "離線上限提示"
 }
