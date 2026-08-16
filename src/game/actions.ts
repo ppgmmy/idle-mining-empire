@@ -465,14 +465,16 @@ export function dropGear(state: GameState, gearId: string): GameState {
   if (equipped[item.slot] === gearId) {
     delete equipped[item.slot]
   }
+  const refund = sellGearRefund(item)
   return {
     ...state,
     gear: state.gear.filter((g) => g.id !== gearId),
     equipped,
+    stardust: state.stardust.add(refund),
   }
 }
 
-/** 一鍵賣未穿戴裝備，退回累計星塵付出嘅 90% */
+/** 一鍵賣未穿戴裝備，退回累計星塵付出嘅 80% */
 export function sellUnequippedGear(
   state: GameState,
   slot?: GearSlot,

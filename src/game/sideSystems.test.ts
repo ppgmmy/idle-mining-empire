@@ -26,7 +26,7 @@ import {
   gearItemPower,
   gearPowerDeltaPct,
 } from './state'
-import { craftGear, craftGearCost, equipGear, mineClick, rerollGear, sellUnequippedGear, startChallenge, abandonChallenge, tick, unequipGear } from './actions'
+import { craftGear, craftGearCost, dropGear, equipGear, mineClick, rerollGear, sellUnequippedGear, startChallenge, abandonChallenge, tick, unequipGear } from './actions'
 import { bn } from './bigNumber'
 import { GEAR_SLOTS, RARITY_ORDER } from './types'
 
@@ -291,7 +291,7 @@ describe('side systems', () => {
     expect(sumAffix(state, 'clickMult')).toBeCloseTo(0.875)
   })
 
-  it('sellUnequippedGear refunds 90% of stardust invested', () => {
+  it('sellUnequippedGear refunds 80% of stardust invested', () => {
     const a = {
       ...rollGear('gloves'),
       id: 'g1',
@@ -314,7 +314,27 @@ describe('side systems', () => {
     state = sellUnequippedGear(state)
     expect(state.gear).toHaveLength(1)
     expect(state.gear[0].id).toBe('g1')
-    expect(state.stardust.eq(180)).toBe(true)
+    expect(state.stardust.eq(160)).toBe(true)
+  })
+
+  it('dropGear refunds 80% of stardust invested', () => {
+    const item = {
+      ...rollGear('gloves'),
+      id: 'drop1',
+      rarity: 'common' as const,
+      stardustInvested: '200',
+    }
+    let state = createInitialState()
+    state = {
+      ...state,
+      gear: [item],
+      equipped: { gloves: 'drop1' },
+      stardust: bn(10),
+    }
+    state = dropGear(state, 'drop1')
+    expect(state.gear).toHaveLength(0)
+    expect(state.equipped.gloves).toBeUndefined()
+    expect(state.stardust.eq(170)).toBe(true)
   })
 
   it('craft then sell does not refund craft crystals as stardust', () => {

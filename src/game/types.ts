@@ -197,7 +197,7 @@ export type GearItem = {
   variant?: number
   /** 品質倍率（約 0.88–1.18），打造時寫入詞條 */
   quality?: number
-  /** 累計付出星塵（字串 BN）；出售退 90% */
+  /** 累計付出星塵（字串 BN）；出售／丟棄退 80% */
   stardustInvested?: string
   /** 創世後詞條突破次數（永久跟件） */
   breakthrough?: number

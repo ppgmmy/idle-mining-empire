@@ -630,8 +630,8 @@ export const GEAR_CRAFT_CRYSTALS = 15_000
 export const GEAR_CRAFT_STARDUST_LEGACY = 200
 /** @deprecated 用 GEAR_CRAFT_CRYSTALS；保留別名以免外部誤用 */
 export const GEAR_CRAFT_STARDUST = GEAR_CRAFT_STARDUST_LEGACY
-/** 出售退回累計付出嘅比例 */
-export const GEAR_SELL_REFUND_RATE = 0.9
+/** 出售／丟棄退回累計付出嘅比例 */
+export const GEAR_SELL_REFUND_RATE = 0.8
 
 /** 舊存檔無投資紀錄時，按舊打造星塵價＋歷次晉升／重鑄成本估算 */
 function estimateLegacyGearStardustInvested(item: GearItem): BN {
@@ -660,7 +660,7 @@ export function gearStardustInvested(item: GearItem): BN {
   return estimateLegacyGearStardustInvested(item)
 }
 
-/** 出售退星塵＝累計付出 × 90%（向下取整） */
+/** 出售／丟棄退星塵＝累計付出 × 80%（向下取整） */
 export function sellGearRefund(item: GearItem): BN {
   return gearStardustInvested(item).mul(GEAR_SELL_REFUND_RATE).floor()
 }

@@ -129,6 +129,7 @@ export default function App() {
   const [challengeRecordId, setChallengeRecordId] = useState<string | null>(null)
   const [challengeLogOpen, setChallengeLogOpen] = useState(false)
   const [gearFilter, setGearFilter] = useState<GearSlot | null>(null)
+  const [selectedGearId, setSelectedGearId] = useState<string | null>(null)
   const [craftReveal, setCraftReveal] = useState<GearItem | null>(null)
   const { state } = game
 
@@ -193,8 +194,16 @@ export default function App() {
     return state.gear.indexOf(b) - state.gear.indexOf(a)
   })
   const selectGearSlot = (slot: GearSlot) => {
+    setSelectedGearId(null)
     setGearFilter((prev) => (prev === slot ? null : slot))
   }
+
+  useEffect(() => {
+    if (!selectedGearId) return
+    if (!state.gear.some((g) => g.id === selectedGearId)) {
+      setSelectedGearId(null)
+    }
+  }, [selectedGearId, state.gear])
 
   if (!game.ready) {
     return <div className="boot">載入礦場中…</div>
@@ -870,7 +879,10 @@ export default function App() {
                 type="button"
                 className={gearFilter == null ? 'gear-filter-chip on' : 'gear-filter-chip'}
                 aria-pressed={gearFilter == null}
-                onClick={() => setGearFilter(null)}
+                onClick={() => {
+                  setGearFilter(null)
+                  setSelectedGearId(null)
+                }}
               >
                 全部 · {state.gear.length}
               </button>
@@ -1050,7 +1062,11 @@ export default function App() {
                     <p className="hint">
                       尚未有{SLOT_META[gearFilter!].label}。
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="hint gear-inventory-tip">
+                      點擊一件展開詳情／操作（同時只開一件，避免堆疊）
+                    </p>
+                  )}
                   {sortedGear.map((raw) => {
                     const item = ensureGearIdentity(raw)
                     const cost = rerollGearCost(item)
@@ -1076,9 +1092,101 @@ export default function App() {
                     const lockMax = maxAffixLocks(item)
                     const fodder = listResonateFodder(state, item.id)
                     const reso = resonanceLevel(item)
+                    const expanded = selectedGearId === item.id
                     return (
-                      <article
+                      <div
                         key={item.id}
+                        className={[
+                          'gear-item-block',
+                          expanded ? 'gear-item-block-open' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
+                        <div
+                          className={[
+                            'gear-row',
+                            `gear-row-tier-${visualTier}`,
+                            isEquipped ? 'gear-row-equipped' : '',
+                            expanded ? 'gear-row-selected' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          style={
+                            {
+                              borderColor: accent,
+                              '--gear-accent': accent,
+                            } as CSSProperties
+                          }
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded={expanded}
+                          onClick={() =>
+                            setSelectedGearId((id) =>
+                              id === item.id ? null : item.id,
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setSelectedGearId((id) =>
+                                id === item.id ? null : item.id,
+                              )
+                            }
+                          }}
+                        >
+                          <GearPortrait
+                            item={item}
+                            size="sm"
+                            className="gear-row-portrait"
+                          />
+                          <div className="gear-row-main">
+                            <strong className="gear-row-name">
+                              {isEquipped ? '● ' : ''}
+                              {item.name}
+                            </strong>
+                            <span className="gear-row-meta">
+                              {meta.label} · {RARITY_LABEL[item.rarity]} ·{' '}
+                              {setDef.name}套
+                              {reso > 0 ? ` · 共鳴+${reso}` : ''}
+                              {(item.breakthrough ?? 0) > 0
+                                ? ` · 突破+${item.breakthrough}`
+                                : ''}
+                            </span>
+                          </div>
+                          <div className="gear-row-side">
+                            <span className="gear-row-power">
+                              ×{gearItemPower(item).toFixed(2)}
+                            </span>
+                            {deltaPct != null ? (
+                              <span
+                                className={
+                                  deltaPct >= 0
+                                    ? 'gear-delta gear-delta-up'
+                                    : 'gear-delta gear-delta-down'
+                                }
+                              >
+                                {deltaPct >= 0 ? '+' : ''}
+                                {deltaPct}%
+                              </span>
+                            ) : null}
+                            <button
+                              type="button"
+                              className={
+                                isEquipped ? 'ghost-btn' : 'secondary-btn'
+                              }
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (isEquipped) game.unequipGear(item.id)
+                                else game.equipGear(item.id)
+                              }}
+                            >
+                              {isEquipped ? '卸下' : '穿戴'}
+                            </button>
+                          </div>
+                        </div>
+                        {expanded ? (
+                      <article
                         className={[
                           'gear-card',
                           `gear-card-tier-${visualTier}`,
@@ -1212,13 +1320,19 @@ export default function App() {
                               type="button"
                               className="ghost-btn"
                               onClick={() => {
+                                const refund = sellGearRefund(item)
                                 const ok = window.confirm(
-                                  `確定丟棄「${item.name}」？`,
+                                  refund.gt(0)
+                                    ? `確定丟棄「${item.name}」？\n收回 ${formatBN(refund)} 星塵（80%）。`
+                                    : `確定丟棄「${item.name}」？\n呢件冇星塵投資，唔會退星塵。`,
                                 )
-                                if (ok) game.dropGear(item.id)
+                                if (ok) {
+                                  game.dropGear(item.id)
+                                  setSelectedGearId(null)
+                                }
                               }}
                             >
-                              丟
+                              丟 · +{formatBN(sellGearRefund(item))} 星塵
                             </button>
                           </div>
                         </div>
@@ -1272,6 +1386,8 @@ export default function App() {
                           </p>
                         ) : null}
                       </article>
+                        ) : null}
+                      </div>
                     )
                   })}
                 </div>
