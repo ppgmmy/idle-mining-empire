@@ -36,6 +36,7 @@ export function serialize(state: GameState): SerializedGameState {
     stageHp: serializeBN(state.stageHp),
     echo: serializeBN(state.echo ?? bn(0)),
     expeditionFloor: Math.max(0, Number(state.expeditionFloor ?? 0) || 0),
+    expeditionEndsAt: Math.max(0, Number(state.expeditionEndsAt ?? 0) || 0),
     activeBoss: state.activeBoss
       ? {
           name: state.activeBoss.name,
@@ -272,6 +273,10 @@ export function deserialize(raw: SerializedGameState): GameState {
     expeditionFloor: Math.max(
       0,
       Number((raw as { expeditionFloor?: number }).expeditionFloor ?? 0) || 0,
+    ),
+    expeditionEndsAt: Math.max(
+      0,
+      Number((raw as { expeditionEndsAt?: number }).expeditionEndsAt ?? 0) || 0,
     ),
     stageHp: (() => {
       const stage = Math.max(1, Number(raw.stage ?? 1) || 1)

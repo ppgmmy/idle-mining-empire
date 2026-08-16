@@ -13,8 +13,12 @@ import {
   describeSoftWall,
   echoMult,
   expeditionCost,
+  expeditionDurationMs,
   expeditionEchoReward,
+  expeditionInProgress,
+  expeditionReadyToClaim,
   expeditionUnlocked,
+  formatExpeditionDuration,
   prestigeScore,
   rebirthSoftWallMult,
   resonatorMult,
@@ -144,6 +148,17 @@ export default function App() {
     const tip = unseen.description ? ` · ${unseen.description}` : ''
     game.notify(`新優化已上線：${unseen.title}${tip} · 可撳上方「去試下」`)
   }, [game.ready])
+
+  useEffect(() => {
+    if (
+      !expeditionInProgress(state) &&
+      !expeditionReadyToClaim(state)
+    ) {
+      return
+    }
+    const id = window.setInterval(() => setPulse((p) => p + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [state.expeditionEndsAt, state.expeditionFloor])
 
   // 玩家通知永遠顯示最新優化（唔再掛喺 daily-opt-banner flag）
   const lastOpt = getLastEnabledFeature()
@@ -448,6 +463,68 @@ export default function App() {
                   })()}
                 </button>
               </div>
+            ) : null}
+
+            {expeditionUnlocked(state) ? (
+              <div className="expedition-card">
+                <div className="evolve-card-head">
+                  <strong>Boss 遠征</strong>
+                  <span className="evolve-card-req">
+                    第 {(state.expeditionFloor ?? 0) + 1} 層
+                  </span>
+                </div>
+                <p className="hint rebirth-lede">
+                  耗礦石派出遠征隊 · 完成後提升產量回響倍數（非貨幣）· 目前 ×
+                  {formatBN(echoMult(state))}
+                </p>
+                {(() => {
+                  const now = Date.now()
+                  const floor = state.expeditionFloor ?? 0
+                  const duration = expeditionDurationMs(floor)
+                  const endsAt = state.expeditionEndsAt ?? 0
+                  if (expeditionReadyToClaim(state, now)) {
+                    return (
+                      <p className="hint">遠征已完成，結算入帳中…</p>
+                    )
+                  }
+                  if (expeditionInProgress(state, now)) {
+                    const leftMs = Math.max(0, endsAt - now)
+                    const startedAt = endsAt - duration
+                    const elapsed = Math.max(0, now - startedAt)
+                    const pct = Math.max(
+                      0,
+                      Math.min(100, (elapsed / Math.max(1, duration)) * 100),
+                    )
+                    return (
+                      <>
+                        <div className="soft-wall-meter-track" aria-hidden>
+                          <div
+                            className="soft-wall-meter-fill"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="hint">
+                          遠征進行中 · 剩餘 {formatExpeditionDuration(leftMs)}
+                        </p>
+                      </>
+                    )
+                  }
+                  return (
+                    <button
+                      type="button"
+                      className="secondary-btn evolve-btn"
+                      disabled={!canRunExpedition(state, now)}
+                      onClick={game.runExpedition}
+                    >
+                      {state.activeBoss
+                        ? '戰鬥中無法遠征'
+                        : `出發遠征 · ${formatBN(expeditionCost(state))} 礦石 · ${formatExpeditionDuration(duration)} · 回響倍數+${formatBN(expeditionEchoReward(state))}`}
+                    </button>
+                  )
+                })()}
+              </div>
+            ) : (state.evolutionCount ?? 0) >= 1 ? (
+              <p className="hint">進化第 3 階解鎖 Boss 遠征（探險）</p>
             ) : null}
           </section>
         ) : null}
@@ -1225,6 +1302,9 @@ export default function App() {
                 {resonatorUnlocked(state)
                   ? ` · 共鳴 ×${formatBN(resonatorMult(state))}`
                   : ''}
+                {(state.echo?.gt(0) ?? false)
+                  ? ` · 回響 ×${formatBN(echoMult(state))}`
+                  : ''}
                 {' · '}
                 效率分 {formatBN(prestigeScore(state))}
               </p>
@@ -1267,31 +1347,6 @@ export default function App() {
                 )
               })()}
             </div>
-            {expeditionUnlocked(state) ? (
-              <div className="expedition-card">
-                <div className="evolve-card-head">
-                  <strong>Boss 遠征</strong>
-                  <span className="evolve-card-req">
-                    第 {(state.expeditionFloor ?? 0) + 1} 層
-                  </span>
-                </div>
-                <p className="hint rebirth-lede">
-                  耗礦石換回響（進化保留）· 回響目前 ×{formatBN(echoMult(state))}
-                </p>
-                <button
-                  type="button"
-                  className="secondary-btn evolve-btn"
-                  disabled={!canRunExpedition(state)}
-                  onClick={game.runExpedition}
-                >
-                  {state.activeBoss
-                    ? '戰鬥中無法遠征'
-                    : `遠征 · ${formatBN(expeditionCost(state))} 礦石 · 回響+${formatBN(expeditionEchoReward(state))}`}
-                </button>
-              </div>
-            ) : (state.evolutionCount ?? 0) >= 1 ? (
-              <p className="hint">進化第 3 階解鎖 Boss 遠征</p>
-            ) : null}
             <div className="evolve-card">
               <div className="evolve-card-head">
                 <strong>進化 #{(state.evolutionCount ?? 0) + 1}</strong>
@@ -1376,7 +1431,7 @@ export default function App() {
                       unlocked &&
                       c.reward.echo != null ? (
                         <p className="challenge-reward-echo">
-                          回響+{String(c.reward.echo)} · {c.reward.label}
+                          回響倍數+{String(c.reward.echo)} · {c.reward.label}
                         </p>
                       ) : null}
                       {active ? (

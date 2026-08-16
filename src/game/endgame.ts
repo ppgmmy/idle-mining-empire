@@ -80,6 +80,26 @@ export function expeditionUnlocked(state: GameState): boolean {
   return (state.evolutionCount ?? 0) >= 3
 }
 
+const HOUR_MS = 3_600_000
+
+/** 第 n 層遠征所需時間：首層 24h，之後每層 ×1.5 */
+export function expeditionDurationMs(floor = 0): number {
+  const f = Math.max(0, Math.floor(floor))
+  return Math.floor(24 * HOUR_MS * Math.pow(1.5, f))
+}
+
+export function formatExpeditionDuration(ms: number): string {
+  const totalMin = Math.max(1, Math.round(ms / 60_000))
+  if (totalMin < 60) return `${totalMin} 分鐘`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h < 48) return m > 0 ? `${h} 小時 ${m} 分` : `${h} 小時`
+  const d = Math.floor(h / 24)
+  const rh = h % 24
+  if (rh <= 0) return `${d} 日`
+  return `${d} 日 ${rh} 小時`
+}
+
 export function expeditionCost(state: GameState): BN {
   const floor = Math.max(0, state.expeditionFloor ?? 0)
   return bn(5_000).mul(bn(2.8).pow(floor)).floor()
@@ -93,9 +113,22 @@ export function expeditionEchoReward(state: GameState): BN {
     .floor()
 }
 
-export function canRunExpedition(state: GameState): boolean {
+export function expeditionInProgress(state: GameState, now = Date.now()): boolean {
+  const ends = state.expeditionEndsAt ?? 0
+  return ends > now
+}
+
+export function expeditionReadyToClaim(state: GameState, now = Date.now()): boolean {
+  const ends = state.expeditionEndsAt ?? 0
+  return ends > 0 && now >= ends
+}
+
+export function canRunExpedition(state: GameState, now = Date.now()): boolean {
   if (!expeditionUnlocked(state)) return false
   if (state.activeBoss) return false
+  if (expeditionInProgress(state, now) || expeditionReadyToClaim(state, now)) {
+    return false
+  }
   return state.ore.gte(expeditionCost(state))
 }
 

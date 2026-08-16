@@ -169,8 +169,8 @@ export function challengeReward(
     const clickN = click.toNumber()
     return {
       label: Number.isFinite(clickN)
-        ? `永久點擊+${Math.round(clickN * 1000) / 10}% · 回響+${echoGain}`
-        : `永久點擊×${formatBN(ONE.add(click))} · 回響+${echoGain}`,
+        ? `永久點擊+${Math.round(clickN * 1000) / 10}% · 回響倍數+${echoGain}`
+        : `永久點擊×${formatBN(ONE.add(click))} · 回響倍數+${echoGain}`,
       affix: {
         clickMult: Number.isFinite(clickN)
           ? Number(clickN.toFixed(4))
@@ -184,8 +184,8 @@ export function challengeReward(
     const idleN = idle.toNumber()
     return {
       label: Number.isFinite(idleN)
-        ? `永久閒置+${Math.round(idleN * 1000) / 10}% · 回響+${echoGain}`
-        : `永久閒置×${formatBN(ONE.add(idle))} · 回響+${echoGain}`,
+        ? `永久閒置+${Math.round(idleN * 1000) / 10}% · 回響倍數+${echoGain}`
+        : `永久閒置×${formatBN(ONE.add(idle))} · 回響倍數+${echoGain}`,
       affix: {
         idleRate: Number.isFinite(idleN)
           ? Number(idleN.toFixed(4))
@@ -198,8 +198,8 @@ export function challengeReward(
   const offlineN = offline.toNumber()
   return {
     label: Number.isFinite(offlineN)
-      ? `永久離線+${Math.round(offlineN * 1000) / 10}% · 回響+${echoGain}`
-      : `永久離線×${formatBN(ONE.add(offline))} · 回響+${echoGain}`,
+      ? `永久離線+${Math.round(offlineN * 1000) / 10}% · 回響倍數+${echoGain}`
+      : `永久離線×${formatBN(ONE.add(offline))} · 回響倍數+${echoGain}`,
     affix: {
       offlineBonus: Number.isFinite(offlineN)
         ? Number(offlineN.toFixed(4))
@@ -966,6 +966,7 @@ export function createInitialState(now = Date.now()): GameState {
     stageHp: stageMaxHp(1, 0),
     echo: ZERO,
     expeditionFloor: 0,
+    expeditionEndsAt: 0,
     lastSaveAt: now,
     totalOreEarned: ZERO,
     floaters: [],

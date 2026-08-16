@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   breakthroughGear,
   doEvolve,
+  resolveExpeditionIfDue,
   runExpedition,
   tick,
 } from './actions'
@@ -12,6 +13,7 @@ import {
   canRunExpedition,
   echoMult,
   expeditionCost,
+  expeditionDurationMs,
   expeditionUnlocked,
   prestigeScore,
   rebirthSoftWallMult,
@@ -57,7 +59,7 @@ describe('endgame roadmap', () => {
     expect(canBreakthrough(item)).toBe(true)
     state = {
       ...state,
-      stardust: bn(1_000_000),
+      stardust: bn('1e20'),
       gear: [item],
       equipped: { gloves: item.id },
     }
@@ -101,30 +103,41 @@ describe('endgame roadmap', () => {
     expect(resonatorMult(state).gt(1)).toBe(true)
   })
 
-  it('expedition unlocks at evo 3, spends ore, raises floor and echo', () => {
+  it('expedition unlocks at evo 3, takes time, then grants echo mult', () => {
     let state = createInitialState()
     state = { ...state, evolutionCount: 2, ore: bn(1e9) }
     expect(expeditionUnlocked(state)).toBe(false)
+    const t0 = 1_700_000_000_000
     state = { ...state, evolutionCount: 3, ore: expeditionCost(state).mul(2) }
-    expect(canRunExpedition(state)).toBe(true)
+    expect(canRunExpedition(state, t0)).toBe(true)
+    expect(expeditionDurationMs(0)).toBe(24 * 3_600_000)
+    expect(expeditionDurationMs(1)).toBeGreaterThan(expeditionDurationMs(0))
     const floorBefore = state.expeditionFloor
     const echoBefore = state.echo
-    state = runExpedition(state)
+    state = runExpedition(state, t0)
+    expect(state.expeditionFloor).toBe(floorBefore)
+    expect(state.expeditionEndsAt).toBe(t0 + expeditionDurationMs(floorBefore))
+    expect(state.echo.eq(echoBefore)).toBe(true)
+    expect(canRunExpedition(state, t0 + 1000)).toBe(false)
+    state = resolveExpeditionIfDue(state, t0 + expeditionDurationMs(floorBefore))
     expect(state.expeditionFloor).toBe(floorBefore + 1)
     expect(state.echo.gt(echoBefore)).toBe(true)
+    expect(state.expeditionEndsAt ?? 0).toBe(0)
     expect(prestigeScore(state).gte(1)).toBe(true)
   })
 
-  it('serialize round-trips echo and expeditionFloor', () => {
+  it('serialize round-trips echo, expeditionFloor and endsAt', () => {
     let state = createInitialState()
     state = {
       ...state,
       echo: bn(42),
       expeditionFloor: 7,
+      expeditionEndsAt: 1_800_000_000_000,
       evolutionCount: 3,
     }
     const loaded = deserialize(serialize(state))
     expect(loaded.echo.eq(42)).toBe(true)
     expect(loaded.expeditionFloor).toBe(7)
+    expect(loaded.expeditionEndsAt).toBe(1_800_000_000_000)
   })
 })

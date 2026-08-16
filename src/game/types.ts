@@ -374,10 +374,12 @@ export type GameState = {
   stage: number
   /** 當前關卡礦石 HP */
   stageHp: BN
-  /** 進化回響（挑戰／遠征產出；進化保留） */
+  /** 進化回響點數（挑戰／遠征產出；進化保留；只作產量倍數，非消耗貨幣） */
   echo: BN
   /** Boss 遠征層數（進化≥3 解鎖；永久） */
   expeditionFloor: number
+  /** 進行中遠征結束時間戳；0／缺省＝無 */
+  expeditionEndsAt?: number
   lastSaveAt: number
   totalOreEarned: BN
   floaters: Array<{ id: number; text: string; createdAt: number }>
@@ -412,6 +414,7 @@ export type SerializedGameState = Omit<
   stageHp?: string
   echo?: string
   expeditionFloor?: number
+  expeditionEndsAt?: number
   activeBoss: null | {
     name: string
     level: number

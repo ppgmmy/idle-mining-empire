@@ -12,23 +12,15 @@ import {
 } from '../game/state'
 
 type Props = { state: GameState }
-type ResourceKind = 'ore' | 'crystal' | 'stardust' | 'echo' | 'rebirth'
+type ResourceKind = 'ore' | 'crystal' | 'stardust' | 'rebirth'
 
 export function ResourceBar({ state }: Props) {
   const idle = getIdleRatePerSec(state)
   const echo = state.echo
-  const showEcho =
-    (state.evolutionCount ?? 0) > 0 || (echo != null && echo.gt(0))
+  const showEchoMult = echo != null && echo.gt(0)
   return (
     <header className="resource-bar">
-      <div
-        className={[
-          'resource-grid',
-          showEcho ? 'resource-grid--with-echo' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
+      <div className="resource-grid">
         <Resource
           kind="ore"
           label="礦石"
@@ -51,24 +43,26 @@ export function ResourceBar({ state }: Props) {
           value={formatBN(state.stardust)}
           hint={`息 ${formatBN(stardustInterestRate(state).mul(100))}%/轉`}
         />
-        {showEcho ? (
-          <Resource
-            kind="echo"
-            label="回響"
-            value={formatBN(echo)}
-            hint={`×${formatBN(echoMult(state))}`}
-          />
-        ) : null}
         <Resource
           kind="rebirth"
           label="轉生"
           value={`${state.rebirthCount}  (x ${formatBN(state.rebirthMult)})`}
           hint={
-            (state.evolutionCount ?? 0) > 0 ? (
+            (state.evolutionCount ?? 0) > 0 || showEchoMult ? (
               <>
-                進化{state.evolutionCount}
-                <br />
-                ×{formatBN(evolutionMult(state))}
+                {(state.evolutionCount ?? 0) > 0 ? (
+                  <>
+                    進化{state.evolutionCount}
+                    <br />
+                    ×{formatBN(evolutionMult(state))}
+                  </>
+                ) : null}
+                {showEchoMult ? (
+                  <>
+                    {(state.evolutionCount ?? 0) > 0 ? <br /> : null}
+                    回響×{formatBN(echoMult(state))}
+                  </>
+                ) : null}
               </>
             ) : undefined
           }
@@ -167,36 +161,6 @@ function ResourceIcon({ kind }: { kind: ResourceKind }) {
           <circle className="res-spark res-spark--a" cx="8" cy="10" r="1.1" fill="#fff4c2" />
           <circle className="res-spark res-spark--b" cx="24" cy="9" r="0.9" fill="#ffd56a" />
           <circle className="res-spark res-spark--c" cx="23" cy="22" r="1.2" fill="#fff0b8" />
-        </svg>
-      )
-    case 'echo':
-      return (
-        <svg viewBox="0 0 32 32" className="res-svg res-svg--echo">
-          <defs>
-            <linearGradient id="echo-ring" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#9ad7ff" />
-              <stop offset="100%" stopColor="#57c7b2" />
-            </linearGradient>
-          </defs>
-          <circle
-            cx="16"
-            cy="16"
-            r="10"
-            fill="none"
-            stroke="url(#echo-ring)"
-            strokeWidth="1.6"
-            opacity="0.55"
-          />
-          <circle
-            cx="16"
-            cy="16"
-            r="6.5"
-            fill="none"
-            stroke="url(#echo-ring)"
-            strokeWidth="1.8"
-            opacity="0.85"
-          />
-          <circle cx="16" cy="16" r="2.4" fill="#9ad7ff" />
         </svg>
       )
     case 'rebirth':

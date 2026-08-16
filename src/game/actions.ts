@@ -4,8 +4,11 @@ import {
   canBreakthrough,
   canRunExpedition,
   expeditionCost,
+  expeditionDurationMs,
   expeditionEchoReward,
+  expeditionReadyToClaim,
   expeditionUnlocked,
+  formatExpeditionDuration,
 } from './endgame'
 import {
   canResonateInto,
@@ -98,6 +101,7 @@ export function applyOfflineGains(state: GameState, now = Date.now()): {
   const offlineBonus = getAffixMult(state, 'offlineBonus')
   const gained = getIdleRatePerSec(state).mul(seconds).mul(offlineBonus)
   let next = grantOre(state, gained)
+  next = resolveExpeditionIfDue(next, now)
   next = { ...next, lastSaveAt: now }
   if (gained.gt(0)) {
     next = pushFloater(next, `離線 +${formatBN(gained)}`)
@@ -109,6 +113,7 @@ export function tick(state: GameState, dtSec: number): GameState {
   const idleRate = getIdleRatePerSec(state)
   const gained = idleRate.mul(dtSec)
   let next = grantOre(state, gained)
+  next = resolveExpeditionIfDue(next)
   // 閒置同步削關卡礦石 HP，可自動通關（打 Boss 時暫停）
   if (gained.gt(0) && canAdvanceStage(next)) {
     next = applyStageDamage(next, gained)
@@ -618,22 +623,42 @@ export function resonateAllFodder(
   return next
 }
 
-/** Boss 遠征：耗礦石換回響並推進層數（進化≥3） */
-export function runExpedition(state: GameState): GameState {
-  if (!expeditionUnlocked(state) || !canRunExpedition(state)) return state
-  const cost = expeditionCost(state)
-  const paid = spendOre(state, cost)
-  if (!paid) return state
-  const echoGain = expeditionEchoReward(state)
+/** 遠征到期：入帳回響倍數並推進層數 */
+export function resolveExpeditionIfDue(
+  state: GameState,
+  now = Date.now(),
+): GameState {
+  if (!expeditionReadyToClaim(state, now)) return state
   const floor = Math.max(0, state.expeditionFloor ?? 0)
+  const echoGain = expeditionEchoReward(state)
   let next: GameState = {
-    ...paid,
-    echo: (paid.echo ?? bn(0)).add(echoGain),
+    ...state,
+    echo: (state.echo ?? bn(0)).add(echoGain),
     expeditionFloor: floor + 1,
+    expeditionEndsAt: 0,
   }
   next = pushFloater(
     next,
-    `遠征成功 · 第 ${floor + 1} 層 · 回響+${formatBN(echoGain)}`,
+    `遠征完成 · 第 ${floor + 1} 層 · 回響倍數+${formatBN(echoGain)}`,
+  )
+  return next
+}
+
+/** Boss 遠征出發：耗礦石、開始計時（進化≥3） */
+export function runExpedition(state: GameState, now = Date.now()): GameState {
+  if (!expeditionUnlocked(state) || !canRunExpedition(state, now)) return state
+  const cost = expeditionCost(state)
+  const paid = spendOre(state, cost)
+  if (!paid) return state
+  const floor = Math.max(0, state.expeditionFloor ?? 0)
+  const duration = expeditionDurationMs(floor)
+  let next: GameState = {
+    ...paid,
+    expeditionEndsAt: now + duration,
+  }
+  next = pushFloater(
+    next,
+    `遠征出發 · 第 ${floor + 1} 層 · 需時 ${formatExpeditionDuration(duration)}`,
   )
   return next
 }
@@ -689,6 +714,7 @@ export function doEvolve(state: GameState): GameState {
     craftXp: state.craftXp,
     echo: state.echo ?? bn(0),
     expeditionFloor: state.expeditionFloor ?? 0,
+    expeditionEndsAt: state.expeditionEndsAt ?? 0,
     // 挑戰歸零：進化後以裝備為核心重打挑戰線（回響保留）
     challengeCleared: emptyChallengeCleared(),
     challengeRecords: [],
