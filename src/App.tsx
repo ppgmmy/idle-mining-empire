@@ -1367,7 +1367,7 @@ export default function App() {
                   {formatBN(evolutionFactor(state.rebirthCount))}（今轉 +
                   {formatBN(evolutionSlice(state.rebirthCount).mul(100))}%）
                 </li>
-                <li>保留：回響、星塵、裝備、打造、遠征層數</li>
+                <li>保留：回響倍數、Boss遠征（層數／進行中）、星塵、裝備、打造</li>
                 <li>重置：礦石進度、轉生、研究、晶體、設施、限制挑戰</li>
                 <li>解鎖：軟牆 → 共鳴(2階) → 遠征(3階)</li>
               </ul>
@@ -1377,7 +1377,7 @@ export default function App() {
                 disabled={!canEvolve(state)}
                 onClick={() => {
                   const ok = window.confirm(
-                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度、晶體與限制挑戰（轉生歸零），保留回響、星塵與裝備。`,
+                    `確定進化到第 ${(state.evolutionCount ?? 0) + 1} 階？\n會重置進度、晶體與限制挑戰（轉生歸零），保留回響倍數、Boss遠征、星塵與裝備。`,
                   )
                   if (ok) game.evolve()
                 }}

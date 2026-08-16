@@ -151,4 +151,25 @@ describe('endgame roadmap', () => {
     expect(loaded.expeditionFloor).toBe(7)
     expect(loaded.expeditionEndsAt).toBe(1_800_000_000_000)
   })
+
+  it('evolve keeps echo and Boss expedition progress', () => {
+    let state = createInitialState()
+    state = {
+      ...state,
+      rebirthCount: 25,
+      echo: bn(17),
+      expeditionFloor: 4,
+      expeditionEndsAt: 1_900_000_000_000,
+      stardust: bn(50),
+      craftLevel: 3,
+      craftXp: 1,
+    }
+    state = doEvolve(state)
+    expect(state.evolutionCount).toBe(1)
+    expect(state.echo.eq(17)).toBe(true)
+    expect(state.expeditionFloor).toBe(4)
+    expect(state.expeditionEndsAt).toBe(1_900_000_000_000)
+    expect(state.stardust.eq(50)).toBe(true)
+    expect(state.rebirthCount).toBe(0)
+  })
 })

@@ -701,7 +701,7 @@ export function doRebirth(state: GameState): GameState {
   }
 }
 
-/** 進化：重置進度／研究／晶體／挑戰；保留星塵／裝備／打造；進化次數 +1 */
+/** 進化：重置進度／研究／晶體／挑戰；保留星塵／裝備／打造／回響／Boss遠征 */
 export function doEvolve(state: GameState): GameState {
   if (!canEvolve(state)) return state
   const nextEvo = (state.evolutionCount ?? 0) + 1
@@ -714,10 +714,11 @@ export function doEvolve(state: GameState): GameState {
     equipped: state.equipped,
     craftLevel: state.craftLevel,
     craftXp: state.craftXp,
+    // 回響倍數、遠征層數、進行中遠征計時：進化不重置
     echo: state.echo ?? bn(0),
     expeditionFloor: state.expeditionFloor ?? 0,
     expeditionEndsAt: state.expeditionEndsAt ?? 0,
-    // 挑戰歸零：進化後以裝備為核心重打挑戰線（回響保留）
+    // 挑戰歸零：進化後以裝備為核心重打挑戰線（回響／遠征保留）
     challengeCleared: emptyChallengeCleared(),
     challengeRecords: [],
     activeChallengeId: null,
@@ -737,7 +738,7 @@ export function describeEvolveNotice(state: GameState): string {
   const unlocks: string[] = ['軟牆']
   if (evo >= 2) unlocks.push('共鳴核心')
   if (evo >= 3) unlocks.push('Boss遠征')
-  return `進化成功！第 ${evo} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生／挑戰歸零 · 回響／星塵／裝備已保留 · 解鎖：${unlocks.join('／')}`
+  return `進化成功！第 ${evo} 階 · 全局 ×${formatBN(evolutionMult(state))} · 轉生／挑戰歸零 · 回響／Boss遠征／星塵／裝備已保留 · 解鎖：${unlocks.join('／')}`
 }
 
 export function describeRebirthNotice(
