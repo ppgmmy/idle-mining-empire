@@ -11,6 +11,12 @@
       "id": "offline-cap-hint",
       "title": "離線上限提示",
       "description": "資源列顯示離線收益上限時數，減少誤會。"
+    },
+    {
+      "date": "2026-08-17",
+      "id": "soft-wall-meter",
+      "title": "進化軟牆進度條",
+      "description": "轉生頁視覺化顯示軟牆剩餘轉數與本轉需求倍率。"
     }
   ]
 }

@@ -1,9 +1,10 @@
 {
   "enabled": [
     "set-bonus-panel",
-    "offline-cap-hint"
+    "offline-cap-hint",
+    "soft-wall-meter"
   ],
-  "updatedAt": "2026-08-16T08:43:23.904Z",
-  "lastFeatureId": "offline-cap-hint",
-  "lastTitle": "離線上限提示"
+  "updatedAt": "2026-08-17T08:56:42.047Z",
+  "lastFeatureId": "soft-wall-meter",
+  "lastTitle": "進化軟牆進度條"
 }
