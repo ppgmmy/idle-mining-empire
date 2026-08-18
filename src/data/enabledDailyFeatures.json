@@ -2,9 +2,10 @@
   "enabled": [
     "set-bonus-panel",
     "offline-cap-hint",
-    "soft-wall-meter"
+    "soft-wall-meter",
+    "resonance-batch-feed"
   ],
-  "updatedAt": "2026-08-17T08:56:42.047Z",
-  "lastFeatureId": "soft-wall-meter",
-  "lastTitle": "進化軟牆進度條"
+  "updatedAt": "2026-08-18T08:50:53.528Z",
+  "lastFeatureId": "resonance-batch-feed",
+  "lastTitle": "批量餵料共鳴"
 }

@@ -17,6 +17,12 @@
       "id": "soft-wall-meter",
       "title": "進化軟牆進度條",
       "description": "轉生頁視覺化顯示軟牆剩餘轉數與本轉需求倍率。"
+    },
+    {
+      "date": "2026-08-18",
+      "id": "resonance-batch-feed",
+      "title": "批量餵料共鳴",
+      "description": "創世裝備可一次注入全部合格餵料，加速共鳴堆疊。"
     }
   ]
 }
