@@ -3,9 +3,10 @@
     "set-bonus-panel",
     "offline-cap-hint",
     "soft-wall-meter",
-    "resonance-batch-feed"
+    "resonance-batch-feed",
+    "challenge-reward-highlight"
   ],
-  "updatedAt": "2026-08-18T08:50:53.528Z",
-  "lastFeatureId": "resonance-batch-feed",
-  "lastTitle": "批量餵料共鳴"
+  "updatedAt": "2026-08-19T08:51:28.787Z",
+  "lastFeatureId": "challenge-reward-highlight",
+  "lastTitle": "挑戰獎勵高亮"
 }

@@ -23,6 +23,12 @@
       "id": "resonance-batch-feed",
       "title": "批量餵料共鳴",
       "description": "創世裝備可一次注入全部合格餵料，加速共鳴堆疊。"
+    },
+    {
+      "date": "2026-08-19",
+      "id": "challenge-reward-highlight",
+      "title": "挑戰獎勵高亮",
+      "description": "限制挑戰卡片突出遠征倍數與詞條獎勵，方便規劃主線。"
     }
   ]
 }
