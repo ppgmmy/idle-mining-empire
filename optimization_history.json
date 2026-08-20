@@ -29,6 +29,12 @@
       "id": "challenge-reward-highlight",
       "title": "挑戰獎勵高亮",
       "description": "限制挑戰卡片突出遠征倍數與詞條獎勵，方便規劃主線。"
+    },
+    {
+      "date": "2026-08-20",
+      "id": "persist-buy-mult",
+      "title": "記住購買倍數",
+      "description": "升級頁 ×1／×10／Max 選擇會記住，下次進來不用重設。"
     }
   ]
 }

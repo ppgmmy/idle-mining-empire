@@ -4,9 +4,10 @@
     "offline-cap-hint",
     "soft-wall-meter",
     "resonance-batch-feed",
-    "challenge-reward-highlight"
+    "challenge-reward-highlight",
+    "persist-buy-mult"
   ],
-  "updatedAt": "2026-08-19T08:51:28.787Z",
-  "lastFeatureId": "challenge-reward-highlight",
-  "lastTitle": "挑戰獎勵高亮"
+  "updatedAt": "2026-08-20T08:52:39.037Z",
+  "lastFeatureId": "persist-buy-mult",
+  "lastTitle": "記住購買倍數"
 }
