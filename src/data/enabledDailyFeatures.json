@@ -5,9 +5,10 @@
     "soft-wall-meter",
     "resonance-batch-feed",
     "challenge-reward-highlight",
-    "persist-buy-mult"
+    "persist-buy-mult",
+    "affix-totals-panel"
   ],
-  "updatedAt": "2026-08-20T08:52:39.037Z",
-  "lastFeatureId": "persist-buy-mult",
-  "lastTitle": "記住購買倍數"
+  "updatedAt": "2026-08-21T08:54:22.559Z",
+  "lastFeatureId": "affix-totals-panel",
+  "lastTitle": "詞條總覽"
 }

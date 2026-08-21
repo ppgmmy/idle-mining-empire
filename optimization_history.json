@@ -35,6 +35,12 @@
       "id": "persist-buy-mult",
       "title": "記住購買倍數",
       "description": "升級頁 ×1／×10／Max 選擇會記住，下次進來不用重設。"
+    },
+    {
+      "date": "2026-08-21",
+      "id": "affix-totals-panel",
+      "title": "詞條總覽",
+      "description": "裝備頁顯示目前點擊／閒置／開採／離線總倍率，方便對比換裝。"
     }
   ]
 }
