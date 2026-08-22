@@ -41,6 +41,12 @@
       "id": "affix-totals-panel",
       "title": "詞條總覽",
       "description": "裝備頁顯示目前點擊／閒置／開採／離線總倍率，方便對比換裝。"
+    },
+    {
+      "date": "2026-08-22",
+      "id": "equip-best-button",
+      "title": "一鍵穿最強",
+      "description": "裝備頁一鍵為各槽穿上庫存中戰力最高嘅件。"
     }
   ]
 }

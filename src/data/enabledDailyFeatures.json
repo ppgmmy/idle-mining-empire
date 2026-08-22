@@ -6,9 +6,10 @@
     "resonance-batch-feed",
     "challenge-reward-highlight",
     "persist-buy-mult",
-    "affix-totals-panel"
+    "affix-totals-panel",
+    "equip-best-button"
   ],
-  "updatedAt": "2026-08-21T08:54:22.559Z",
-  "lastFeatureId": "affix-totals-panel",
-  "lastTitle": "詞條總覽"
+  "updatedAt": "2026-08-22T08:44:31.019Z",
+  "lastFeatureId": "equip-best-button",
+  "lastTitle": "一鍵穿最強"
 }
